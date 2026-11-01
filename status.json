@@ -1,7 +1,7 @@
 {
-  "updatedAtBeijing": "2026-11-01 21:42",
-  "runAtBeijing": "2026-11-01 21:42",
-  "updatedAtUtc": "2026-11-01T13:42:45.873Z",
+  "updatedAtBeijing": "2026-11-01 21:59",
+  "runAtBeijing": "2026-11-01 21:59",
+  "updatedAtUtc": "2026-11-01T13:59:38.306Z",
   "upstreams": 6,
   "before": 609764,
   "after": 279953,
@@ -27,7 +27,7 @@
     "adrules": 206214,
     "217heidai": 241854,
     "antiad": 100958,
-    "cat": 206075,
+    "cat": 206214,
     "oisd": 59200
   }
 }

@@ -37,8 +37,8 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-01 21:42` 周日
-- **上次自动任务运行时间（北京时间）**：`2026-11-01 21:42`
+- **本合集更新时间（北京时间）**：`2026-11-01 21:59` 周日
+- **上次自动任务运行时间（北京时间）**：`2026-11-01 21:59`
 
 | 指标 | 数值 |
 | --- | --- |
@@ -69,7 +69,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,214 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | anti-AD | https://anti-ad.net/adguard.txt | 100,958 |
-| 6 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,075 |
+| 6 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
 | 7 | OISD Small | https://small.oisd.nl/ | 59,200 |
 
 各源版权归原作者所有，请遵守各自的使用条款。

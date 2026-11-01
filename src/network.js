@@ -11,9 +11,13 @@ const GH_PROXIES = ['https://ghfast.top/', 'https://gh-proxy.com/', 'https://ghp
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 adguard-merged-rules/1.0';
 
-const MIN_BYTES = 512;
+const MIN_BYTES = 256;
 
 const HTML_RE = /<!doctype\s+html|<html[\s>]|<head[\s>]/i;
+
+// 纯域名行（`ads.example.com`），不带 `||` 前缀的列表格式。
+// parser 支持这种写法，体检也必须认得，否则合法的纯域名列表会被判成错误页。
+const BARE_DOMAIN_RE = /^[a-z0-9_*-]+(?:\.[a-z0-9_*-]+)*\.[a-z][a-z0-9-]{1,62}$/i;
 
 /**
  * 为一个 URL 生成候选访问地址（首项为原始地址）
@@ -63,7 +67,8 @@ export function looksLikeRuleList(text) {
       line.startsWith('#') ||
       line.startsWith('0.0.0.0 ') ||
       line.startsWith('127.0.0.1 ') ||
-      line.startsWith('::1 ')
+      line.startsWith('::1 ') ||
+      (line.length <= 253 && BARE_DOMAIN_RE.test(line))
     ) {
       hits += 1;
     }
@@ -100,7 +105,7 @@ async function tryFetch(url, timeoutMs, deadline) {
  */
 export async function fetchText(
   url,
-  { timeoutMs = 45000, retries = 1, deadline = Date.now() + 15 * 60 * 1000 } = {}
+  { timeoutMs = 45000, retries = 1, deadline = Date.now() + 15 * 60 * 1000, budgetScope = '全局' } = {}
 ) {
   const candidates = buildCandidates(url);
   const attempts = [];
@@ -109,7 +114,7 @@ export async function fetchText(
     for (const candidate of candidates) {
       if (Date.now() >= deadline) {
         const last = attempts[attempts.length - 1];
-        throw new Error(`已超全局抓取预算（最后一次失败: ${last ? last.error : '无'}）`);
+        throw new Error(`已超${budgetScope}抓取预算（最后一次失败: ${last ? last.error : '无'}）`);
       }
       try {
         const text = await tryFetch(candidate, timeoutMs, deadline);

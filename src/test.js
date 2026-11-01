@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseLine, normalizeDomain } from './parser.js';
+import { parseLine, parseList, normalizeDomain } from './parser.js';
 import { subsumeByParent, mergeSources, findAllowShadowed } from './merger.js';
-import { beijingNow } from './render.js';
+import { beijingNow, renderRules } from './render.js';
 import { buildCandidates, looksLikeRuleList } from './network.js';
 
 test('标准屏蔽规则', () => {
@@ -14,7 +14,18 @@ test('标准屏蔽规则', () => {
 });
 
 test('白名单例外规则', () => {
-  assert.deepEqual(parseLine('@@||ad.azure.com^'), { kind: 'allow', domain: 'ad.azure.com' });
+  assert.deepEqual(parseLine('@@||ad.azure.com^'), {
+    kind: 'allow',
+    domain: 'ad.azure.com',
+    important: false,
+  });
+});
+
+test('白名单的 $important 不能被丢掉', () => {
+  // @@||x^$important 用来压过带 $important 的屏蔽规则，降级成 @@||x^ 会失去这个能力
+  const r = parseLine('@@||ad.azure.com^$important');
+  assert.equal(r.kind, 'allow');
+  assert.equal(r.important, true);
 });
 
 test('$important 标记', () => {
@@ -157,7 +168,10 @@ test('白名单只去重不收敛', () => {
       },
     },
   ]);
-  assert.deepEqual(result.allow, ['a.com', 'b.a.com']);
+  assert.deepEqual(
+    result.allow.map((a) => a.domain),
+    ['a.com', 'b.a.com']
+  );
   assert.equal(result.stats.before, 3);
 });
 
@@ -314,4 +328,157 @@ test('解析阶段丢弃的行按原因汇总', () => {
   assert.equal(result.stats.skipped.regex, 4);
   assert.equal(result.stats.skipped.path, 2);
   assert.equal(result.stats.skippedTotal, 7);
+});
+
+// ---------- 回归：本次修复的 6 个问题 ----------
+
+test('一个 IP 挂多个域名的 hosts 行不再整行丢弃', () => {
+  const r = parseLine('0.0.0.0 a.com b.com c.example.net');
+  assert.equal(r.kind, 'block');
+  assert.deepEqual(r.domains, ['a.com', 'b.com', 'c.example.net']);
+
+  const parsed = parseList('0.0.0.0 a.com b.com\n');
+  assert.equal(parsed.block.length, 2, '应当展开成 2 条屏蔽规则');
+  assert.equal(parsed.skipped.unknown, undefined);
+});
+
+test('纯域名列表能通过内容体检', () => {
+  // parser 支持裸域名行，体检却只认 || 前缀，会把合法列表判成错误页
+  const bare = Array.from({ length: 600 }, (_, i) => `ad${i}.example.com`).join('\n');
+  assert.equal(looksLikeRuleList(bare), true);
+  assert.equal(looksLikeRuleList('{"message":"Not Found"}'), false);
+});
+
+test('缺 ^ 锚定与带路径分开统计', () => {
+  assert.equal(parseLine('||example.com').reason, 'no-anchor');
+  assert.equal(parseLine('||example.com/ad.js').reason, 'path');
+});
+
+test('冲突统计只算收敛后仍在文件里的规则', () => {
+  // x.a.com 的屏蔽规则会被 a.com 收敛掉，文件里只剩 a.com 和 y.com，
+  // 因此真实同域冲突只有 y.com 一条
+  const mk = (id, block, allow) => ({
+    id,
+    name: id,
+    url: 'u',
+    homepage: 'h',
+    parsed: {
+      block,
+      allow,
+      raw: [],
+      skipped: {},
+      totalLines: block.length + allow.length,
+      effective: block.length + allow.length,
+    },
+  });
+  const result = mergeSources([
+    mk(
+      's1',
+      [
+        { kind: 'block', domain: 'a.com' },
+        { kind: 'block', domain: 'x.a.com' },
+        { kind: 'block', domain: 'y.com' },
+      ],
+      [
+        { kind: 'allow', domain: 'x.a.com' },
+        { kind: 'allow', domain: 'y.com' },
+      ]
+    ),
+  ]);
+  assert.deepEqual(result.block.map((b) => b.domain), ['a.com', 'y.com']);
+  assert.equal(result.stats.conflicts, 1, 'x.a.com 的屏蔽规则已不在文件中，不该算冲突');
+});
+
+test('被 $badfilter 点名的域名不参与父子域收敛', () => {
+  // 上游用 ||ads.a.com^$badfilter 明确放行，若 ||ads.a.com^ 被父域 a.com 收敛掉，
+  // badfilter 就成了空取消，父域照样挡住它
+  const r = mergeSources([
+    {
+      id: 's1',
+      name: 's1',
+      url: 'u',
+      homepage: 'h',
+      parsed: {
+        block: [
+          { kind: 'block', domain: 'a.com' },
+          { kind: 'block', domain: 'ads.a.com' },
+        ],
+        allow: [],
+        raw: ['||ads.a.com^$badfilter'],
+        skipped: {},
+        totalLines: 3,
+        effective: 3,
+      },
+    },
+  ]);
+  assert.ok(
+    r.block.some((b) => b.domain === 'ads.a.com'),
+    '被 badfilter 取消的规则必须保留，让 badfilter 有东西可取消'
+  );
+  assert.equal(r.block.find((b) => b.domain === 'ads.a.com').important, false);
+  assert.equal(r.stats.badfilterKept, 1);
+});
+
+test('白名单 $important 跨源合并且能渲染出来', () => {
+  const mk = (id, allow) => ({
+    id,
+    name: id,
+    url: 'u',
+    homepage: 'h',
+    parsed: { block: [], allow, raw: [], skipped: {}, totalLines: 1, effective: 1 },
+  });
+  const result = mergeSources([
+    mk('s1', [{ kind: 'allow', domain: 'a.com', important: false }]),
+    mk('s2', [{ kind: 'allow', domain: 'a.com', important: true }]),
+  ]);
+  assert.equal(result.allow.length, 1);
+  assert.equal(result.allow[0].important, true);
+
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.ok(out.includes('@@||a.com^$important'));
+});
+
+test('实际不生效的屏蔽规则合计 = 架空 + 同域放行 - $important 压制', () => {
+  const mk = (id, block, allow) => ({
+    id,
+    name: id,
+    url: 'u',
+    homepage: 'h',
+    parsed: {
+      block,
+      allow,
+      raw: [],
+      skipped: {},
+      totalLines: block.length + allow.length,
+      effective: block.length + allow.length,
+    },
+  });
+  const result = mergeSources([
+    mk(
+      's1',
+      [
+        { kind: 'block', domain: 'ads.a.com' }, // 被 @@||a.com^ 架空
+        { kind: 'block', domain: 'b.com' }, // 同域既有屏蔽又有 @@
+      ],
+      [
+        { kind: 'allow', domain: 'a.com' },
+        { kind: 'allow', domain: 'b.com' },
+      ]
+    ),
+  ]);
+  assert.equal(result.stats.allowShadowed, 1);
+  assert.equal(result.stats.conflicts, 1);
+  assert.equal(result.stats.deadRules, 2);
+});
+
+test('抓取预算耗尽时能区分单源预算与全局预算', async () => {
+  const { fetchText } = await import('./network.js');
+  await assert.rejects(
+    () => fetchText('https://adrules.top/dns.txt', { deadline: Date.now() - 1, budgetScope: '单源' }),
+    /已超单源抓取预算/
+  );
+  await assert.rejects(
+    () => fetchText('https://adrules.top/dns.txt', { deadline: Date.now() - 1 }),
+    /已超全局抓取预算/
+  );
 });

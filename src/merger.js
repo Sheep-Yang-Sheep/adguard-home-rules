@@ -81,12 +81,32 @@ export function findAllowShadowed(blockDomains, allowSet, sampleSize = 5) {
 }
 
 /**
+ * 收集被 `$badfilter` 点名取消的域名
+ *
+ * `||ads.a.com^$badfilter` 的语义是「不要屏蔽 ads.a.com」。若 `||ads.a.com^` 因父域
+ * `||a.com^` 已存在而被收敛剔除，badfilter 就变成空取消，父域照样把它挡住 ——
+ * 上游明确放行的意图被静默破坏。因此被 badfilter 点名的域名不参与父子域收敛。
+ *
+ * @param {string[]} rawRules
+ * @returns {Set<string>}
+ */
+export function badfilterTargets(rawRules) {
+  const set = new Set();
+  for (const rule of rawRules) {
+    if (!/\$.*\bbadfilter\b/.test(rule)) continue;
+    const m = /^\|\|([^$^*]+)\^/.exec(rule);
+    if (m) set.add(m[1].trim().toLowerCase());
+  }
+  return set;
+}
+
+/**
  * @param {Array<{id:string,name:string,url:string,homepage:string,upstream?:string,parsed:object}>} sources
  */
 export function mergeSources(sources) {
   /** @type {Map<string,{important:boolean,count:number}>} */
   const blockMap = new Map();
-  /** @type {Map<string,Set<string>>} 只对 200 多条例外规则记来源，成本可忽略 */
+  /** @type {Map<string,{sources:Set<string>,important:boolean}>} 只对 200 多条例外规则记来源，成本可忽略 */
   const allowMap = new Map();
   /** @type {Map<string,number>} */
   const rawMap = new Map();
@@ -115,8 +135,12 @@ export function mergeSources(sources) {
 
     for (const r of parsed.allow) {
       const cur = allowMap.get(r.domain);
-      if (cur) cur.add(src.id);
-      else allowMap.set(r.domain, new Set([src.id]));
+      if (cur) {
+        cur.sources.add(src.id);
+        cur.important = cur.important || Boolean(r.important);
+      } else {
+        allowMap.set(r.domain, { sources: new Set([src.id]), important: Boolean(r.important) });
+      }
     }
 
     for (const text of parsed.raw) {
@@ -133,24 +157,29 @@ export function mergeSources(sources) {
   const rawUnique = rawMap.size;
 
   // 只有普通屏蔽规则可被父域覆盖；$important 规则优先级高于 @@ 例外，
-  // 一旦剔除会改变实际拦截行为，因此始终原样保留
+  // 一旦剔除会改变实际拦截行为，因此始终原样保留。
+  // 被 $badfilter 点名的域名同样不参与收敛，否则上游「明确放行」会被父域规则推翻。
+  const keepForBadfilter = badfilterTargets([...rawMap.keys()]);
   const subsumeCandidates = [];
-  const importantDomains = [];
+  const pinnedDomains = [];
   for (const [domain, meta] of blockMap) {
-    if (meta.important) importantDomains.push(domain);
+    if (meta.important) pinnedDomains.push(domain);
+    else if (keepForBadfilter.has(domain)) pinnedDomains.push(domain);
     else subsumeCandidates.push(domain);
   }
   const { keep, removed } = subsumeByParent(subsumeCandidates);
 
   const finalBlock = [
     ...keep.map((d) => ({ domain: d, important: false })),
-    ...importantDomains.map((d) => ({ domain: d, important: true })),
+    ...pinnedDomains.map((d) => ({ domain: d, important: blockMap.get(d)?.important || false })),
   ];
 
   // 排序保证同内容生成同结果，避免无谓的 diff
   finalBlock.sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
 
-  const finalAllow = [...allowMap.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const finalAllow = [...allowMap.entries()]
+    .map(([domain, meta]) => ({ domain, important: meta.important }))
+    .sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
   const sortedRaw = [...rawMap.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   // 通配类规则（如 `||*-sdk.rum.aliyuncs.com^`）若其尾部父域已被屏蔽，
@@ -164,14 +193,17 @@ export function mergeSources(sources) {
   }
 
   // 同一域名既屏蔽又放行，AdGuard Home 以 @@ 为准（除非屏蔽带了 $important）
-  const importantSet = new Set(importantDomains);
-  const conflicts = finalAllow.filter((d) => blockMap.has(d));
+  // 注意：必须用收敛后的 finalBlock 判断，否则把已经被父域收敛掉的屏蔽规则也算成冲突
+  const finalBlockSet = new Set(finalBlock.map((b) => b.domain));
+  const allowDomains = finalAllow.map((a) => a.domain);
+  const importantSet = new Set(finalBlock.filter((b) => b.important).map((b) => b.domain));
+  const conflicts = allowDomains.filter((d) => finalBlockSet.has(d));
   const importantOverAllow = conflicts.filter((d) => importantSet.has(d));
 
-  const shadowed = findAllowShadowed(
-    finalBlock.map((b) => b.domain),
-    new Set(finalAllow)
-  );
+  const shadowed = findAllowShadowed(finalBlock.map((b) => b.domain), new Set(allowDomains));
+
+  // 文件里存在但实际不会拦截的规则总数：白名单架空 + 同域被 @@ 压过
+  const deadRules = shadowed.count + conflicts.length - importantOverAllow.length;
 
   const after = finalBlock.length + finalAllow.length + finalRaw.length;
 
@@ -208,6 +240,8 @@ export function mergeSources(sources) {
       allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,
       importantOverAllow: importantOverAllow.length,
+      deadRules,
+      badfilterKept: pinnedDomains.filter((d) => keepForBadfilter.has(d) && !blockMap.get(d)?.important).length,
       skipped,
       skippedTotal,
       upstreams: upstreams.size,

@@ -1,10 +1,11 @@
 {
   "minSuccessRatio": 0.75,
   "minSourceRetention": 0.5,
-  "concurrency": 4,
+  "concurrency": 8,
   "timeoutMs": 45000,
   "retries": 1,
   "fetchBudgetMs": 720000,
+  "perSourceBudgetMs": 480000,
   "output": {
     "repo": "Sheep-Yang-Sheep/adguard-home-rules",
     "file": "dist/adguard-home-rules.txt",

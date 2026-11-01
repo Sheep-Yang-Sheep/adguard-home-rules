@@ -12,6 +12,8 @@ import { domainToASCII } from 'node:url';
 
 // hosts 格式：0.0.0.0 domain / 127.0.0.1 domain / ::1 domain
 const HOSTS_RE = /^(?:0\.0\.0\.0|127\.0\.0\.1|::1?|::)\s+(\S+)\s*$/i;
+// 一个 IP 后面跟多个域名（hosts 常见写法）：`0.0.0.0 a.com b.com`
+const HOSTS_MULTI_RE = /^(?:0\.0\.0\.0|127\.0\.0\.1|::1?|::)\s+(\S+(?:\s+\S+)+)\s*$/i;
 
 // 单条 label 允许字母数字、下划线、连字符；整体至少两级
 const DOMAIN_RE = /^(?!-)[a-z0-9_-]{1,63}(?:\.(?!-)[a-z0-9_-]{1,63})+$/;
@@ -67,8 +69,11 @@ function parseNetworkRule(body, isAllow) {
   let host = pattern;
   if (host.endsWith('^')) {
     host = host.slice(0, -1);
-  } else {
+  } else if (host.includes('/')) {
     return { kind: 'skip', reason: 'path' };
+  } else {
+    // `||example.com`（漏了 `^`）与路径规则是两回事，分开统计便于定位上游格式问题
+    return { kind: 'skip', reason: 'no-anchor' };
   }
   if (host.includes('/')) return { kind: 'skip', reason: 'path' };
 
@@ -96,7 +101,9 @@ function parseNetworkRule(body, isAllow) {
   const domain = normalizeDomain(host);
   if (!domain) return { kind: 'skip', reason: 'invalid-domain' };
 
-  if (isAllow) return { kind: 'allow', domain };
+  // `@@||example.com^$important` 的 $important 不能丢：它决定这条例外能否压过
+  // 带 $important 的屏蔽规则，丢了就降级成普通例外，和解说文档自相矛盾
+  if (isAllow) return { kind: 'allow', domain, important: modifiers.includes('important') };
   // `$important` 会提高优先级，合并时若同域已存在普通规则需升级
   return { kind: 'block', domain, important: modifiers.includes('important') };
 }
@@ -104,7 +111,7 @@ function parseNetworkRule(body, isAllow) {
 /**
  * 解析单行规则
  * @param {string} input 原始行
- * @returns {{kind:'block'|'allow'|'raw'|'skip', domain?:string, rule?:string, important?:boolean, reason?:string, normalizedFromWildcard?:boolean}}
+ * @returns {{kind:'block'|'allow'|'raw'|'skip', domain?:string, domains?:string[], rule?:string, important?:boolean, reason?:string, normalizedFromWildcard?:boolean}}
  */
 export function parseLine(input) {
   let line = String(input).replace(/\r$/, '').trim();
@@ -135,6 +142,18 @@ export function parseLine(input) {
 
   const hostsMatch = HOSTS_RE.exec(line);
   if (hostsMatch) return makeDomainRule(hostsMatch[1], false);
+
+  // `0.0.0.0 a.com b.com`：一个 IP 挂多个域名，以前整行被判为 unknown 丢掉，
+  // 这里展开成多条，避免上游 hosts 格式的规则静默消失
+  const multiMatch = HOSTS_MULTI_RE.exec(line);
+  if (multiMatch) {
+    const domains = multiMatch[1]
+      .split(/\s+/)
+      .map((h) => normalizeDomain(h))
+      .filter(Boolean);
+    if (domains.length) return { kind: 'block', domains };
+    return { kind: 'skip', reason: 'invalid-domain' };
+  }
 
   if (line.startsWith('@@')) {
     const rest = line.slice(2);
@@ -170,8 +189,14 @@ export function parseList(text) {
     if (!line.trim()) continue;
     totalLines += 1;
     const r = parseLine(line);
-    if (r.kind === 'block') block.push(r);
-    else if (r.kind === 'allow') allow.push(r);
+    if (r.kind === 'block') {
+      // 多域名 hosts 行会返回 domains 数组，逐条展开
+      if (r.domains) {
+        for (const domain of r.domains) block.push({ kind: 'block', domain, important: false });
+      } else {
+        block.push(r);
+      }
+    } else if (r.kind === 'allow') allow.push(r);
     else if (r.kind === 'raw') raw.push(r.rule);
     else skipped[r.reason] = (skipped[r.reason] || 0) + 1;
   }

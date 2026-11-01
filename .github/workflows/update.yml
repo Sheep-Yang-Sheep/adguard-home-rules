@@ -8,7 +8,13 @@ on:
   schedule:
     - cron: '7 */4 * * *'
   # 支持手动触发：仓库 Actions 页面 → 自动合并规则 → Run workflow
+  # force=true 可跳过「比上轮少 20% 就拒绝发布」的熔断，用于上游合法瘦身后解卡
   workflow_dispatch:
+    inputs:
+      force:
+        description: '跳过 20% 跌幅熔断，强制发布本次结果'
+        type: boolean
+        default: false
   # 修改配置或代码后立即跑一次验证
   push:
     branches: [main]
@@ -63,13 +69,16 @@ jobs:
       - name: 校验输出
         env:
           PREV_BLOCK: ${{ steps.baseline.outputs.block }}
+          FORCE: ${{ github.event.inputs.force || 'false' }}
         run: |
           set -euo pipefail
           FILE=dist/adguard-home-rules.txt
           test -f "$FILE" || { echo "::error::规则文件未生成"; exit 1; }
 
           SIZE=$(stat -c%s "$FILE")
-          LINES=$(grep -c '^||' "$FILE" || true)
+          # 只统计纯域名屏蔽规则，与 status.json 的 block 口径一致；
+          # 以前用 '^||' 会把 400 多条通配规则也算进来，和基线不是同一个数
+          LINES=$(grep -cE '^\|\|[^$*]+\^$' "$FILE" || true)
           echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条 / 上轮: ${PREV_BLOCK:-0} 条"
 
           if [ "$SIZE" -lt 1000000 ]; then
@@ -81,8 +90,13 @@ jobs:
           if [ "${PREV_BLOCK:-0}" -gt 100000 ]; then
             MIN=$(( PREV_BLOCK * 80 / 100 ))
             if [ "$LINES" -lt "$MIN" ]; then
-              echo "::error::屏蔽规则数 $LINES 条，比上轮 $PREV_BLOCK 条少 20% 以上，拒绝发布"
-              exit 1
+              if [ "$FORCE" = "true" ]; then
+                echo "::warning::屏蔽规则数 $LINES 条，低于上轮 $PREV_BLOCK 条的 80%，但已指定 force=true，继续发布"
+              else
+                echo "::error::屏蔽规则数 $LINES 条，比上轮 $PREV_BLOCK 条少 20% 以上，拒绝发布"
+                echo "::error::若确认是上游合法瘦身，请到 Actions 页面手动 Run workflow 并勾选 force"
+                exit 1
+              fi
             fi
           fi
 

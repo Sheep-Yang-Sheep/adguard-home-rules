@@ -57,11 +57,20 @@ async function loadSource(src, config, deadline) {
     return { src, ok: true, text: readFileSync(file, 'utf8'), via: 'offline' };
   }
 
+  // 单源预算：并发数小于源数时，一个慢源可能吃光全局预算，把后面的源全部挤成
+  // 「已超预算」。给每个源封顶，保证每个源都有公平的抓取机会。
+  // 注意必须大于「一轮候选地址的最坏耗时」（候选数 × timeoutMs），否则源还没轮完
+  // 镜像就被判失败——raw.githubusercontent 在境内不可达时每个候选都要等满超时。
+  const perSourceMs = config.perSourceBudgetMs ?? 8 * 60 * 1000;
+  const sourceDeadline = Math.min(deadline, Date.now() + perSourceMs);
+  const budgetScope = sourceDeadline < deadline ? '单源' : '全局';
+
   try {
     const { text, via } = await fetchText(src.url, {
       timeoutMs: config.timeoutMs,
       retries: config.retries,
-      deadline,
+      deadline: sourceDeadline,
+      budgetScope,
     });
     return { src, ok: true, text, via };
   } catch (err) {
@@ -249,10 +258,27 @@ async function main() {
     failedSources: failed,
   });
 
+  // 失败源的基线必须留下来：只写本轮成功的源，下一轮「规则数骤降」检测会因为
+  // 找不到基线而直接跳过，等于连续两次异常就没有任何防护。
+  const configuredIds = new Set(config.sources.map((s) => s.id));
+  const sourceStats = {};
+  for (const [id, value] of Object.entries(prevSourceStats)) {
+    if (configuredIds.has(id) && typeof value === 'number') sourceStats[id] = value;
+  }
+  for (const s of result.sources) sourceStats[s.id] = s.effective;
+
+  // 内容没变时，沿用上一次「内容真正变化」的 UTC 时间戳，而不是本轮 run 时间
+  const contentUpdatedAtUtc =
+    contentChanged || !oldRules
+      ? runAtReal.toISOString()
+      : (prevStatus && prevStatus.updatedAtUtc) || runAtReal.toISOString();
+
   const status = renderStatus(result, {
     updatedAt: effectiveUpdatedAt,
     runAt,
     runAtUtc: runAtReal.toISOString(),
+    contentUpdatedAtUtc,
+    sourceStats,
     failedSources: failed,
   });
 

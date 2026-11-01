@@ -30,6 +30,7 @@ const n = (v) => Number(v).toLocaleString('en-US');
 const SKIP_LABELS = {
   'element-hide': '元素隐藏规则',
   path: '带路径的 URL 规则',
+  'no-anchor': '缺少 ^ 锚定的域名规则',
   regex: '正则规则',
   'url-anchor': '|http:// 锚定规则',
   'unsupported-modifier': 'DNS 层无效修饰符',
@@ -95,6 +96,10 @@ export function renderRules(result, ctx) {
   out.push(`! 被父域白名单 @@ 架空的屏蔽规则: ${n(stats.allowShadowed)}（仍在文件中，但实际不会拦截）`);
   out.push(`! 同域既屏蔽又放行（按 @@ 生效）: ${n(stats.conflicts)}`);
   out.push(`!   其中带 $important、会压过 @@ 的: ${n(stats.importantOverAllow)}`);
+  out.push(`! 实际不生效的屏蔽规则合计: ${n(stats.deadRules ?? 0)}（= 架空 + 同域放行 - $important 压制）`);
+  if (stats.badfilterKept) {
+    out.push(`! 因 $badfilter 点名而保留、未参与父子域收敛的规则: ${n(stats.badfilterKept)}`);
+  }
   if (stats.skippedTotal) {
     const detail = Object.entries(stats.skipped)
       .sort((a, b) => b[1] - a[1])
@@ -122,7 +127,7 @@ export function renderRules(result, ctx) {
   out.push('');
 
   out.push('! ============ 白名单例外规则（@@ 优先级高于普通屏蔽规则）============');
-  for (const d of allow) out.push(`@@||${d}^`);
+  for (const a of allow) out.push(a.important ? `@@||${a.domain}^$important` : `@@||${a.domain}^`);
   out.push('');
 
   out.push('! ============ 通配与特殊规则 ============');
@@ -190,6 +195,7 @@ export function renderReadme(result, ctx) {
     '{{SHADOWED}}': n(stats.allowShadowed),
     '{{CONFLICTS}}': n(stats.conflicts),
     '{{IMPORTANT_OVER_ALLOW}}': n(stats.importantOverAllow),
+    '{{DEAD_RULES}}': n(stats.deadRules ?? 0),
     '{{SKIPPED_TOTAL}}': n(stats.skippedTotal),
     '{{SOURCE_COUNT}}': String(sources.length),
     '{{UPSTREAM_COUNT}}': String(stats.upstreams),
@@ -210,26 +216,31 @@ export function renderReadme(result, ctx) {
  * sources 字段存各源本轮有效规则数，下一轮据此判断「规则数骤降」。
  */
 export function renderStatus(result, ctx) {
-  const { stats, sources } = result;
-  const sourceStats = {};
-  for (const s of sources) sourceStats[s.id] = s.effective;
+  const { stats } = result;
+  // 由调用方决定：成功源用本轮值，失败源沿用上一轮基线，避免「基线被抹掉」
+  const sourceStats = ctx.sourceStats || {};
 
   return (
     JSON.stringify(
       {
         updatedAtBeijing: ctx.updatedAt.minute,
         runAtBeijing: ctx.runAt.minute,
-        updatedAtUtc: ctx.runAtUtc,
+        // 内容真正变化的时间（UTC）；以前这里错填了 run 时间，两者含义不同
+        updatedAtUtc: ctx.contentUpdatedAtUtc || ctx.runAtUtc,
+        runAtUtc: ctx.runAtUtc,
         upstreams: stats.upstreams,
         before: stats.before,
         after: stats.after,
         subsumeRemoved: stats.subsumeRemoved,
+        rawCovered: stats.rawCovered,
         block: result.block.length,
         allow: result.allow.length,
         raw: result.raw.length,
         allowShadowed: stats.allowShadowed,
         conflicts: stats.conflicts,
         importantOverAllow: stats.importantOverAllow,
+        deadRules: stats.deadRules,
+        badfilterKept: stats.badfilterKept,
         skippedTotal: stats.skippedTotal,
         skipped: stats.skipped,
         failedSources: (ctx.failedSources || []).map((f) => `${f.name}: ${f.error}`),

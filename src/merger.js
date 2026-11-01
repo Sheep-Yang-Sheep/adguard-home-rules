@@ -2,15 +2,16 @@
  * 合并器
  *
  * 职责：
- *   1. 跨源去重（域名级，附来源追踪）
+ *   1. 跨源去重（域名级）
  *   2. 父子域收敛：父域已被屏蔽时，其子域的独立屏蔽规则属于冗余，直接剔除
  *   3. 白名单例外 @@ 只做去重，永不收敛
+ *   4. 体检报告：白名单架空了多少屏蔽规则、同域冲突、被丢弃的行——全部量化输出
  */
 
 /**
  * 找出被父域规则覆盖的域名
  * @param {string[]} domains 已去重的屏蔽域名
- * @returns {{kept:string[], removed:Array<{domain:string, parent:string}>}}
+ * @returns {{keep:string[], removed:Array<{domain:string, parent:string}>}}
  */
 export function subsumeByParent(domains) {
   const set = new Set(domains);
@@ -35,10 +36,6 @@ export function subsumeByParent(domains) {
   return { keep, removed };
 }
 
-function bumpSource(set, id) {
-  if (!set.has(id)) set.add(id);
-}
-
 /**
  * 判断一条通配规则是否已被某个父域屏蔽规则完整覆盖
  * 仅处理 `||...^` 且不带 `$` 修饰符的规则；`@@` 例外规则不参与
@@ -55,40 +52,79 @@ function isRawCoveredByBlock(rule, blockedSet) {
 }
 
 /**
- * @param {Array<{id:string,name:string,url:string,homepage:string,parsed:object}>} sources
+ * 白名单父域会把它名下所有子域的屏蔽规则架空。
+ *
+ * 例：A 源为了修误杀加了 `@@||example.com^`，B 源屏蔽了 `ads.example.com`，
+ * 合并后 `@@` 生效，`||ads.example.com^` 成了死规则 —— 文件里看着有，实际不拦。
+ * 这部分必须量化出来，否则合并白名单等于静默漏水。
+ *
+ * @returns {{count:number, sample:Array<{domain:string, allow:string}>}}
+ */
+export function findAllowShadowed(blockDomains, allowSet, sampleSize = 5) {
+  let count = 0;
+  const sample = [];
+
+  for (const d of blockDomains) {
+    let idx = d.indexOf('.');
+    while (idx !== -1) {
+      const parent = d.slice(idx + 1);
+      if (allowSet.has(parent)) {
+        count += 1;
+        if (sample.length < sampleSize) sample.push({ domain: d, allow: parent });
+        break;
+      }
+      idx = d.indexOf('.', idx + 1);
+    }
+  }
+
+  return { count, sample };
+}
+
+/**
+ * @param {Array<{id:string,name:string,url:string,homepage:string,upstream?:string,parsed:object}>} sources
  */
 export function mergeSources(sources) {
-  /** @type {Map<string,{important:boolean,sources:Set<string>}>} */
+  /** @type {Map<string,{important:boolean,count:number}>} */
   const blockMap = new Map();
+  /** @type {Map<string,Set<string>>} 只对 200 多条例外规则记来源，成本可忽略 */
   const allowMap = new Map();
+  /** @type {Map<string,number>} */
   const rawMap = new Map();
 
+  const skipped = Object.create(null);
   let before = 0;
 
   for (const src of sources) {
     const { parsed } = src;
+
+    // 内容完全相同的镜像条目只用来做抓取冗余，不参与合并、
+    // 也不计入「合并前规则数」，否则统计会凭空虚高几十万条
+    if (src.mirror) continue;
+
     before += parsed.effective;
 
     for (const r of parsed.block) {
       const cur = blockMap.get(r.domain);
       if (cur) {
         cur.important = cur.important || Boolean(r.important);
-        bumpSource(cur.sources, src.id);
+        cur.count += 1;
       } else {
-        blockMap.set(r.domain, { important: Boolean(r.important), sources: new Set([src.id]) });
+        blockMap.set(r.domain, { important: Boolean(r.important), count: 1 });
       }
     }
 
     for (const r of parsed.allow) {
       const cur = allowMap.get(r.domain);
-      if (cur) bumpSource(cur.sources, src.id);
-      else allowMap.set(r.domain, { sources: new Set([src.id]) });
+      if (cur) cur.add(src.id);
+      else allowMap.set(r.domain, new Set([src.id]));
     }
 
     for (const text of parsed.raw) {
-      const cur = rawMap.get(text);
-      if (cur) bumpSource(cur, src.id);
-      else rawMap.set(text, new Set([src.id]));
+      rawMap.set(text, (rawMap.get(text) || 0) + 1);
+    }
+
+    for (const [reason, count] of Object.entries(parsed.skipped || {})) {
+      skipped[reason] = (skipped[reason] || 0) + count;
     }
   }
 
@@ -127,10 +163,20 @@ export function mergeSources(sources) {
     else finalRaw.push(rule);
   }
 
-  // 同一域名既屏蔽又放行，AdGuard Home 以 @@ 为准
+  // 同一域名既屏蔽又放行，AdGuard Home 以 @@ 为准（除非屏蔽带了 $important）
+  const importantSet = new Set(importantDomains);
   const conflicts = finalAllow.filter((d) => blockMap.has(d));
+  const importantOverAllow = conflicts.filter((d) => importantSet.has(d));
+
+  const shadowed = findAllowShadowed(
+    finalBlock.map((b) => b.domain),
+    new Set(finalAllow)
+  );
 
   const after = finalBlock.length + finalAllow.length + finalRaw.length;
+
+  const upstreams = new Set(sources.map((s) => s.upstream || s.id));
+  const skippedTotal = Object.values(skipped).reduce((a, b) => a + b, 0);
 
   return {
     block: finalBlock,
@@ -141,12 +187,14 @@ export function mergeSources(sources) {
       name: s.name,
       url: s.url,
       homepage: s.homepage,
+      upstream: s.upstream || s.id,
+      mirror: Boolean(s.mirror),
       totalLines: s.parsed.totalLines,
       effective: s.parsed.effective,
       block: s.parsed.block.length,
       allow: s.parsed.allow.length,
       raw: s.parsed.raw.length,
-      skipped: s.parsed.skipped,
+      skippedTotal: Object.values(s.parsed.skipped || {}).reduce((a, b) => a + b, 0),
     })),
     stats: {
       before,
@@ -156,8 +204,13 @@ export function mergeSources(sources) {
       rawUnique,
       subsumeRemoved: removed.length,
       rawCovered,
-      subsumeSample: removed.slice(0, 5),
+      allowShadowed: shadowed.count,
+      allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,
+      importantOverAllow: importantOverAllow.length,
+      skipped,
+      skippedTotal,
+      upstreams: upstreams.size,
     },
   };
 }

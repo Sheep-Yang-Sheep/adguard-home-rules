@@ -1,12 +1,33 @@
 {
-  "updatedAtBeijing": "2026-11-01 20:37",
-  "runAtBeijing": "2026-11-01 20:37",
-  "updatedAtUtc": "2026-11-01T12:37:30.941Z",
-  "before": 1022192,
+  "updatedAtBeijing": "2026-11-01 21:42",
+  "runAtBeijing": "2026-11-01 21:42",
+  "updatedAtUtc": "2026-11-01T13:42:45.873Z",
+  "upstreams": 6,
+  "before": 609764,
   "after": 279953,
   "subsumeRemoved": 7071,
   "block": 279297,
   "allow": 243,
   "raw": 413,
-  "failedSources": []
+  "allowShadowed": 4,
+  "conflicts": 29,
+  "importantOverAllow": 0,
+  "skippedTotal": 139,
+  "skipped": {
+    "comment": 51,
+    "unknown": 4,
+    "path": 3,
+    "invalid-domain": 54,
+    "regex": 27
+  },
+  "failedSources": [],
+  "sources": {
+    "awavenue": 972,
+    "qy": 566,
+    "adrules": 206214,
+    "217heidai": 241854,
+    "antiad": 100958,
+    "cat": 206075,
+    "oisd": 59200
+  }
 }

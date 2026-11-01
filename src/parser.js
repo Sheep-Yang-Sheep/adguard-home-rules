@@ -125,6 +125,14 @@ export function parseLine(input) {
     return { kind: 'skip', reason: 'element-hide' };
   }
 
+  // hosts 列表常见写法：`0.0.0.0 ads.example.com # 说明`。
+  // 不剥掉行尾注释的话，HOSTS_RE 和裸域名正则都会匹配失败，整条规则被静默丢弃。
+  const trailingHash = line.search(/\s#/);
+  if (trailingHash > 0) {
+    line = line.slice(0, trailingHash).trim();
+    if (!line) return { kind: 'skip', reason: 'comment' };
+  }
+
   const hostsMatch = HOSTS_RE.exec(line);
   if (hostsMatch) return makeDomainRule(hostsMatch[1], false);
 

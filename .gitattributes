@@ -1,2 +1,5 @@
 * text=auto eol=lf
 *.txt text eol=lf
+
+# 规则文件 28 万行，每次变化几万行，在网页里展开 diff 会卡死浏览器
+dist/adguard-home-rules.txt -diff linguist-generated=true

@@ -1,9 +1,12 @@
 {
   "minSuccessRatio": 0.75,
+  "minSourceRetention": 0.5,
   "concurrency": 4,
   "timeoutMs": 45000,
-  "retries": 2,
+  "retries": 1,
+  "fetchBudgetMs": 720000,
   "output": {
+    "repo": "Sheep-Yang-Sheep/adguard-home-rules",
     "file": "dist/adguard-home-rules.txt",
     "title": "AdGuard Home 合并规则合集",
     "homepage": ""
@@ -23,9 +26,10 @@
     },
     {
       "id": "adrules",
-      "name": "adrules 国内规则",
+      "name": "adrules 国内规则（主站）",
       "url": "https://adrules.top/dns.txt",
-      "homepage": "https://adrules.top/"
+      "homepage": "https://adrules.top/",
+      "upstream": "adrules"
     },
     {
       "id": "217heidai",
@@ -40,16 +44,11 @@
       "homepage": "https://anti-ad.net/"
     },
     {
-      "id": "hagezi",
-      "name": "HaGeZi Pro",
-      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
-      "homepage": "https://github.com/hagezi/dns-blocklists"
-    },
-        {
       "id": "cat",
-      "name": "cat",
+      "name": "AdRules（Cats-Team 备份）",
       "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
-      "homepage": "https://github.com/Cats-Team/AdRules"
+      "homepage": "https://github.com/Cats-Team/AdRules",
+      "upstream": "adrules"
     },
     {
       "id": "oisd",

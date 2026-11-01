@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,18 +26,29 @@ const offlineDir = (() => {
   const [, val] = hit.split('=');
   if (val) return path.resolve(ROOT, val);
   const i = argv.indexOf(hit);
-  return argv[i + 1] ? path.resolve(ROOT, argv[i + 1]) : null;
+  const next = argv[i + 1];
+  // `--offline` 后面若跟的是另一个开关，说明忘了给目录，按未启用离线处理
+  return next && !next.startsWith('--') ? path.resolve(ROOT, next) : null;
 })();
 const dryRun = argv.includes('--dry-run');
 
 const n = (v) => Number(v).toLocaleString('en-US');
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+const pct = (v) => `${(v * 100).toFixed(0)}%`;
 
 function log(msg) {
   process.stdout.write(`${msg}\n`);
 }
 
-async function loadSource(src, config) {
+function readJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+async function loadSource(src, config, deadline) {
   if (offlineDir) {
     const file = path.join(offlineDir, `${src.id}.txt`);
     if (!existsSync(file)) {
@@ -49,6 +61,7 @@ async function loadSource(src, config) {
     const { text, via } = await fetchText(src.url, {
       timeoutMs: config.timeoutMs,
       retries: config.retries,
+      deadline,
     });
     return { src, ok: true, text, via };
   } catch (err) {
@@ -56,15 +69,68 @@ async function loadSource(src, config) {
   }
 }
 
+/**
+ * 内容指纹：只取归一化后的域名集合，忽略注释 / 空行 / 排序差异。
+ * 用来识别「两个地址其实是同一份内容」的镜像源。
+ */
+function fingerprint(parsed) {
+  const h = createHash('sha256');
+  h.update(parsed.block.map((r) => r.domain).sort().join('\n'));
+  h.update('\u0000');
+  h.update(parsed.allow.map((r) => r.domain).sort().join('\n'));
+  h.update('\u0000');
+  h.update([...parsed.raw].sort().join('\n'));
+  return h.digest('hex').slice(0, 16);
+}
+
+/**
+ * 单源体检：抓到了内容不代表内容是对的。
+ *
+ * 镜像挂掉时经常返回 200 + 一张错误页，或者返回被截断的前半段；
+ * 只要和上一轮的有效规则数相比骤降，就判定该源本次失败，不纳入合并。
+ */
+function checkSourceHealth(src, parsed, prevSourceStats, config) {
+  if (parsed.effective === 0) return '解析后 0 条有效规则';
+
+  const prev = prevSourceStats[src.id];
+  if (typeof prev !== 'number' || prev <= 0) return null; // 没有基线，跳过
+
+  const minRetention = config.minSourceRetention ?? 0.5;
+  const ratio = parsed.effective / prev;
+  if (ratio < minRetention) {
+    return `规则数骤降 ${n(parsed.effective)} 条，上轮 ${n(prev)} 条（${pct(ratio)} < ${pct(
+      minRetention
+    )}），疑似上游异常或抓到残缺内容`;
+  }
+  return null;
+}
+
 async function main() {
-  const config = JSON.parse(readFileSync(path.join(ROOT, 'sources.json'), 'utf8'));
+  const config = readJson(path.join(ROOT, 'sources.json'));
+  if (!config) throw new Error('sources.json 缺失或不是合法 JSON');
+
   const repo = repoInfo(config);
   const runAtReal = new Date();
   const runAt = beijingNow(runAtReal);
 
-  log(`[1/4] 抓取上游规则源（${config.sources.length} 个）${offlineDir ? ' · 离线模式' : ''}`);
+  const statusPath = path.join(ROOT, 'status.json');
+  const prevStatus = readJson(statusPath);
+  const prevSourceStats = (prevStatus && prevStatus.sources) || {};
+
+  // 全局抓取预算：所有源共享，超出就立刻收尾，避免把 job 时间跑穿后什么都不提交
+  const budgetMs = config.fetchBudgetMs ?? 12 * 60 * 1000;
+  const deadline = runAtReal.getTime() + budgetMs;
+
+  const upstreamOf = (s) => s.upstream || s.id;
+  const totalUpstreams = new Set(config.sources.map(upstreamOf));
+
+  log(
+    `[1/4] 抓取上游规则源（${config.sources.length} 个地址 / ${totalUpstreams.size} 个独立上游）` +
+      `${offlineDir ? ' · 离线模式' : ''} · 预算 ${Math.round(budgetMs / 60000)} 分钟`
+  );
+
   const fetched = await mapLimit(config.sources, config.concurrency || 4, (src) =>
-    loadSource(src, config)
+    loadSource(src, config, deadline)
   );
 
   const failed = [];
@@ -76,7 +142,15 @@ async function main() {
       log(`  [FAIL] ${item.src.name} — ${item.error}`);
       continue;
     }
+
     const parsed = parseList(item.text);
+    const healthError = checkSourceHealth(item.src, parsed, prevSourceStats, config);
+    if (healthError) {
+      failed.push({ name: item.src.name, url: item.src.url, error: healthError });
+      log(`  [FAIL] ${item.src.name} — ${healthError}`);
+      continue;
+    }
+
     parsedSources.push({ ...item.src, parsed });
     const via = item.via === 'offline' ? '离线文件' : item.via === item.src.url ? '直连' : '镜像';
     log(
@@ -84,27 +158,72 @@ async function main() {
     );
   }
 
-  const successRatio = parsedSources.length / config.sources.length;
+  // 内容指纹 + 上游分组去重。
+  // adrules.top 与 Cats-Team raw 是两个地址、同一份上游规则：抓两份是为了冗余，
+  // 但只能有一份进入合并，否则「合并前规则数」凭空虚高十几万条，
+  // 而且镜像若返回了滞后的旧版本，还会把上游已经删掉的规则重新带回来。
+  const byFingerprint = new Map();
+  const byUpstream = new Map();
+  for (const src of parsedSources) {
+    const fp = fingerprint(src.parsed);
+    src.fingerprint = fp;
+    const up = upstreamOf(src);
+
+    const sameContent = byFingerprint.get(fp);
+    if (sameContent) {
+      src.mirror = true;
+      src.mirrorOf = sameContent.name;
+      log(`  [镜像] ${src.name} 与「${sameContent.name}」内容完全相同，仅作备份`);
+      continue;
+    }
+    byFingerprint.set(fp, src);
+
+    const sameUpstream = byUpstream.get(up);
+    if (sameUpstream) {
+      src.mirror = true;
+      src.mirrorOf = sameUpstream.name;
+      log(`  [备份] ${src.name} 与「${sameUpstream.name}」属同一上游，本次仅作备份不参与合并`);
+      continue;
+    }
+    byUpstream.set(up, src);
+  }
+
+  // 按「独立上游」而不是「地址条数」算成功率。
+  // 否则同一上游挂多个镜像条目会被重复扣分，阈值形同虚设。
+  const okUpstreams = new Set(parsedSources.map(upstreamOf));
+  const successRatio = okUpstreams.size / totalUpstreams.size;
   const minRatio = config.minSuccessRatio ?? 0.75;
+
   if (parsedSources.length === 0 || successRatio < minRatio) {
+    const missing = [...totalUpstreams].filter((u) => !okUpstreams.has(u));
     log(
-      `\n[ABORT] 成功源 ${parsedSources.length}/${config.sources.length} 低于阈值 ${minRatio}，放弃本次输出以免发布残缺规则。`
+      `\n[ABORT] 上游成功 ${okUpstreams.size}/${totalUpstreams.size}（${pct(
+        successRatio
+      )}）低于阈值 ${pct(minRatio)}，放弃本次输出以免发布残缺规则。`
     );
+    log(`        缺失上游: ${missing.join(', ')}`);
     process.exit(1);
   }
 
-  log(`\n[2/4] 解析完成，开始合并`);
+  log(`\n[2/4] 解析完成（上游 ${okUpstreams.size}/${totalUpstreams.size}），开始合并`);
   const result = mergeSources(parsedSources);
 
+  const s = result.stats;
   log(
-    `[3/4] 合并结果: ${n(result.stats.before)} 条 → 去重 ${n(
-      result.stats.blockUnique + result.stats.allowUnique + result.stats.rawUnique
-    )} 条 → 父域覆盖移除 ${n(result.stats.subsumeRemoved + result.stats.rawCovered)} 条 → 最终 ${n(result.stats.after)} 条`
+    `[3/4] 合并结果: ${n(s.before)} 条 → 去重 ${n(
+      s.blockUnique + s.allowUnique + s.rawUnique
+    )} 条 → 父域覆盖移除 ${n(s.subsumeRemoved + s.rawCovered)} 条 → 最终 ${n(s.after)} 条`
+  );
+  log(
+    `      体检: 白名单架空屏蔽 ${n(s.allowShadowed)} 条 · 同域冲突 ${n(
+      s.conflicts
+    )} 条（其中 $important 压制 ${n(s.importantOverAllow)} 条）· 解析丢弃 ${n(
+      s.skippedTotal
+    )} 行`
   );
 
   const distPath = path.join(ROOT, repo.file);
   const readmePath = path.join(ROOT, 'README.md');
-  const statusPath = path.join(ROOT, 'status.json');
 
   const oldRules = existsSync(distPath) ? readFileSync(distPath, 'utf8') : '';
 
@@ -118,20 +237,20 @@ async function main() {
   const contentChanged = contentSignature(oldRules) !== contentSignature(newRules);
 
   // 保留上一次真实的内容更新时间：规则没动就不刷新时间戳，避免无意义的提交
-  let finalRules = newRules;
-  if (!contentChanged && oldRules) {
-    finalRules = oldRules;
-  }
+  const finalRules = !contentChanged && oldRules ? oldRules : newRules;
+  const previousUpdatedAt = extractUpdatedAt(oldRules);
+  const effectiveUpdatedAt =
+    contentChanged || !oldRules ? runAt : previousUpdatedAt || runAt;
 
   const readme = renderReadme(result, {
-    updatedAt: contentChanged || !oldRules ? runAt : extractUpdatedAt(oldRules) || runAt,
+    updatedAt: effectiveUpdatedAt,
     runAt,
     repo,
     failedSources: failed,
   });
 
   const status = renderStatus(result, {
-    updatedAt: contentChanged || !oldRules ? runAt : extractUpdatedAt(oldRules) || runAt,
+    updatedAt: effectiveUpdatedAt,
     runAt,
     runAtUtc: runAtReal.toISOString(),
     failedSources: failed,
@@ -159,9 +278,9 @@ async function main() {
 function extractUpdatedAt(text) {
   const m = /本合集更新时间（北京时间 UTC\+8）:\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/.exec(text);
   if (!m) return null;
-  const [date, time] = m[1].split(' ');
+  const [date] = m[1].split(' ');
   const weekday = '日一二三四五六'[new Date(`${date}T00:00:00Z`).getUTCDay()];
-  return { minute: m[1], date, time, weekday, full: `${m[1]} (UTC+8)` };
+  return { minute: m[1], date, weekday, full: `${m[1]} (UTC+8)` };
 }
 
 main().catch((err) => {

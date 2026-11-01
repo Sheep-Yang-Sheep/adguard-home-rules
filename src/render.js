@@ -27,6 +27,18 @@ export function beijingNow(date = new Date()) {
 
 const n = (v) => Number(v).toLocaleString('en-US');
 
+const SKIP_LABELS = {
+  'element-hide': '元素隐藏规则',
+  path: '带路径的 URL 规则',
+  regex: '正则规则',
+  'url-anchor': '|http:// 锚定规则',
+  'unsupported-modifier': 'DNS 层无效修饰符',
+  'invalid-domain': '非法域名/IP',
+  empty: '空行',
+  comment: '注释',
+  unknown: '无法识别',
+};
+
 /** 从环境变量或配置推导仓库信息 */
 export function repoInfo(config) {
   const slug =
@@ -55,7 +67,7 @@ export function subscriptionLinks({ slug, branch, file }) {
 /** 生成 dist 规则文件正文 */
 export function renderRules(result, ctx) {
   const { stats, block, allow, raw, sources } = result;
-  const { updatedAt, runAt, homepage, failedSources = [] } = ctx;
+  const { updatedAt, homepage, failedSources = [] } = ctx;
 
   const out = [];
   out.push('! Title: AdGuard Home 合并规则合集');
@@ -79,9 +91,23 @@ export function renderRules(result, ctx) {
   out.push(`!   其中白名单例外: ${n(allow.length)}`);
   out.push(`!   其中通配/特殊规则: ${n(raw.length)}`);
   out.push('!');
-  out.push(`! ================= 上游订阅源（${sources.length} 个）=================`);
+  out.push('! ================= 体检报告 =================');
+  out.push(`! 被父域白名单 @@ 架空的屏蔽规则: ${n(stats.allowShadowed)}（仍在文件中，但实际不会拦截）`);
+  out.push(`! 同域既屏蔽又放行（按 @@ 生效）: ${n(stats.conflicts)}`);
+  out.push(`!   其中带 $important、会压过 @@ 的: ${n(stats.importantOverAllow)}`);
+  if (stats.skippedTotal) {
+    const detail = Object.entries(stats.skipped)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${SKIP_LABELS[k] || k} ${n(v)}`)
+      .join(' · ');
+    out.push(`! 解析阶段丢弃 ${n(stats.skippedTotal)} 行: ${detail}`);
+  }
+  out.push('!');
+  out.push(
+    `! ================= 上游订阅源（${sources.length} 个地址 / ${stats.upstreams} 个独立上游）=================`
+  );
   sources.forEach((s, i) => {
-    out.push(`! ${i + 1}. ${s.name}`);
+    out.push(`! ${i + 1}. ${s.name}${s.mirror ? '（同上游镜像）' : ''}`);
     out.push(`!    ${s.url}`);
     if (s.homepage && s.homepage !== s.url) out.push(`!    主页 ${s.homepage}`);
     out.push(`!    本次解析有效规则 ${n(s.effective)} 条`);
@@ -95,7 +121,7 @@ export function renderRules(result, ctx) {
   out.push('! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。');
   out.push('');
 
-  out.push('! ============ 白名单例外规则（@@ 优先级高于任何屏蔽规则）============');
+  out.push('! ============ 白名单例外规则（@@ 优先级高于普通屏蔽规则）============');
   for (const d of allow) out.push(`@@||${d}^`);
   out.push('');
 
@@ -136,9 +162,10 @@ export function renderReadme(result, ctx) {
   const sourceTable = [
     '| # | 源 | 订阅地址 | 本次有效规则 |',
     '| --- | --- | --- | --- |',
-    ...sources.map(
-      (s, i) => `| ${i + 1} | ${s.name} | ${s.url} | ${n(s.effective)} |`
-    ),
+    ...sources.map((s, i) => {
+      const tag = s.mirror ? ' <sub>镜像</sub>' : '';
+      return `| ${i + 1} | ${s.name}${tag} | ${s.url} | ${n(s.effective)} |`;
+    }),
   ].join('\n');
 
   const failBlock = failedSources.length
@@ -160,7 +187,12 @@ export function renderReadme(result, ctx) {
     '{{BLOCK}}': n(result.block.length),
     '{{ALLOW}}': n(result.allow.length),
     '{{RAW}}': n(result.raw.length),
+    '{{SHADOWED}}': n(stats.allowShadowed),
+    '{{CONFLICTS}}': n(stats.conflicts),
+    '{{IMPORTANT_OVER_ALLOW}}': n(stats.importantOverAllow),
+    '{{SKIPPED_TOTAL}}': n(stats.skippedTotal),
     '{{SOURCE_COUNT}}': String(sources.length),
+    '{{UPSTREAM_COUNT}}': String(stats.upstreams),
     '{{LINKS}}': linkTable,
     '{{PRIMARY_URL}}': links[1].url,
     '{{SOURCES}}': sourceTable,
@@ -173,23 +205,38 @@ export function renderReadme(result, ctx) {
   return md;
 }
 
-/** 运行状态快照，便于外部监控 */
+/**
+ * 运行状态快照，便于外部监控与下一轮基线对比。
+ * sources 字段存各源本轮有效规则数，下一轮据此判断「规则数骤降」。
+ */
 export function renderStatus(result, ctx) {
-  const { stats } = result;
-  return JSON.stringify(
-    {
-      updatedAtBeijing: ctx.updatedAt.minute,
-      runAtBeijing: ctx.runAt.minute,
-      updatedAtUtc: ctx.runAtUtc,
-      before: stats.before,
-      after: stats.after,
-      subsumeRemoved: stats.subsumeRemoved,
-      block: result.block.length,
-      allow: result.allow.length,
-      raw: result.raw.length,
-      failedSources: (ctx.failedSources || []).map((f) => f.name),
-    },
-    null,
-    2
-  ) + '\n';
+  const { stats, sources } = result;
+  const sourceStats = {};
+  for (const s of sources) sourceStats[s.id] = s.effective;
+
+  return (
+    JSON.stringify(
+      {
+        updatedAtBeijing: ctx.updatedAt.minute,
+        runAtBeijing: ctx.runAt.minute,
+        updatedAtUtc: ctx.runAtUtc,
+        upstreams: stats.upstreams,
+        before: stats.before,
+        after: stats.after,
+        subsumeRemoved: stats.subsumeRemoved,
+        block: result.block.length,
+        allow: result.allow.length,
+        raw: result.raw.length,
+        allowShadowed: stats.allowShadowed,
+        conflicts: stats.conflicts,
+        importantOverAllow: stats.importantOverAllow,
+        skippedTotal: stats.skippedTotal,
+        skipped: stats.skipped,
+        failedSources: (ctx.failedSources || []).map((f) => `${f.name}: ${f.error}`),
+        sources: sourceStats,
+      },
+      null,
+      2
+    ) + '\n'
+  );
 }

@@ -1,9 +1,12 @@
 name: 自动合并规则
 
 on:
-  # 每 4 小时整点运行一次（UTC）。北京时间约 08:00 / 12:00 / 16:00 / 20:00 / 00:00 / 04:00
+  # 每 4 小时运行一次（UTC）。
+  # 刻意避开整点：GitHub 的 cron 在 :00 最拥堵，经常被延迟甚至直接丢弃，
+  # 用 :17 / :07 这类零散分钟能显著提高准时率。
+  # 对应北京时间约 00:07 / 04:07 / 08:07 / 12:07 / 16:07 / 20:07。
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '7 */4 * * *'
   # 支持手动触发：仓库 Actions 页面 → 自动合并规则 → Run workflow
   workflow_dispatch:
   # 修改配置或代码后立即跑一次验证
@@ -24,7 +27,8 @@ concurrency:
 jobs:
   merge:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 略大于 src/index.js 里的 fetchBudgetMs（12 分钟），给解析/提交留余量
+    timeout-minutes: 25
 
     steps:
       - name: 检出仓库
@@ -40,6 +44,16 @@ jobs:
       - name: 单元测试
         run: node --test src/test.js
 
+      - name: 记录上轮基线
+        id: baseline
+        run: |
+          PREV=0
+          if [ -f status.json ]; then
+            PREV=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('status.json','utf8')).block || 0))")
+          fi
+          echo "block=$PREV" >> "$GITHUB_OUTPUT"
+          echo "上轮屏蔽规则基线: $PREV 条"
+
       - name: 抓取并合并规则
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -47,23 +61,56 @@ jobs:
         run: node src/index.js
 
       - name: 校验输出
+        env:
+          PREV_BLOCK: ${{ steps.baseline.outputs.block }}
         run: |
+          set -euo pipefail
           FILE=dist/adguard-home-rules.txt
-          test -f "$FILE" || { echo "规则文件未生成"; exit 1; }
+          test -f "$FILE" || { echo "::error::规则文件未生成"; exit 1; }
+
           SIZE=$(stat -c%s "$FILE")
           LINES=$(grep -c '^||' "$FILE" || true)
-          echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条"
-          if [ "$SIZE" -lt 1000000 ]; then echo "规则文件异常偏小，疑似抓取失败"; exit 1; fi
+          echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条 / 上轮: ${PREV_BLOCK:-0} 条"
+
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "::error::规则文件异常偏小（$SIZE 字节），疑似抓取失败"
+            exit 1
+          fi
+
+          # 相对上轮掉 20% 以上就拒绝发布：宁可这次不更新，也不要推一份残缺规则
+          if [ "${PREV_BLOCK:-0}" -gt 100000 ]; then
+            MIN=$(( PREV_BLOCK * 80 / 100 ))
+            if [ "$LINES" -lt "$MIN" ]; then
+              echo "::error::屏蔽规则数 $LINES 条，比上轮 $PREV_BLOCK 条少 20% 以上，拒绝发布"
+              exit 1
+            fi
+          fi
 
       - name: 提交变更
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+
           if git diff --cached --quiet; then
             echo "本次无变更，跳过提交"
             exit 0
           fi
+
           TS=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M')
           git commit -m "chore(rules): 更新合并规则 ${TS} (北京时间)"
-          git push origin "HEAD:${{ github.event.repository.default_branch }}"
+
+          BRANCH="${{ github.event.repository.default_branch }}"
+          for i in 1 2 3; do
+            if git push origin "HEAD:$BRANCH"; then
+              echo "推送成功"
+              exit 0
+            fi
+            echo "推送失败（第 $i 次），变基后重试"
+            git pull --rebase --autostash origin "$BRANCH" || true
+            sleep 5
+          done
+
+          echo "::error::推送连续失败，请检查分支是否被保护或存在冲突"
+          exit 1

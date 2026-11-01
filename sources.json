@@ -42,8 +42,14 @@
     {
       "id": "hagezi",
       "name": "HaGeZi Pro",
-      "url": "https://gitlab.com/hagezi/mirror/-/raw/main/dns-blocklists/adblock/pro.txt",
+      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
       "homepage": "https://github.com/hagezi/dns-blocklists"
+    },
+        {
+      "id": "cat",
+      "name": "cat",
+      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
+      "homepage": "https://github.com/Cats-Team/AdRules"
     },
     {
       "id": "oisd",

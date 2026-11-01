@@ -37,16 +37,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-01 15:24` 周日
-- **上次自动任务运行时间（北京时间）**：`2026-11-01 15:25`
+- **本合集更新时间（北京时间）**：`2026-11-01 20:37` 周日
+- **上次自动任务运行时间（北京时间）**：`2026-11-01 20:37`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 1,021,787 |
-| 去重后规则数 | 286,950 |
+| 合并前规则数（各上游合计，含重复） | 1,022,192 |
+| 去重后规则数 | 287,090 |
 | 被父域规则覆盖而移除的冗余规则 | 7,137 |
-| **合并后规则数** | **279,813** |
-| └ 屏蔽规则 | 279,157 |
+| **合并后规则数** | **279,953** |
+| └ 屏蔽规则 | 279,297 |
 | └ 白名单例外 `@@` | 243 |
 | └ 通配 / 特殊规则 | 413 |
 
@@ -61,12 +61,12 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | --- | --- | --- | --- |
 | 1 | 秋风 AWAvenue Ads Rule | https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt | 972 |
 | 2 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 3 | adrules 国内规则 | https://adrules.top/dns.txt | 206,075 |
+| 3 | adrules 国内规则 | https://adrules.top/dns.txt | 206,214 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | anti-AD | https://anti-ad.net/adguard.txt | 100,958 |
-| 6 | HaGeZi Pro | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,075 |
-| 7 | cat | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,075 |
-| 8 | OISD Small | https://small.oisd.nl/ | 59,212 |
+| 6 | HaGeZi Pro | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
+| 7 | cat | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
+| 8 | OISD Small | https://small.oisd.nl/ | 59,200 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 

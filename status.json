@@ -1,11 +1,11 @@
 {
-  "updatedAtBeijing": "2026-11-01 15:24",
-  "runAtBeijing": "2026-11-01 15:25",
-  "updatedAtUtc": "2026-11-01T07:25:41.107Z",
-  "before": 1021787,
-  "after": 279813,
+  "updatedAtBeijing": "2026-11-01 20:37",
+  "runAtBeijing": "2026-11-01 20:37",
+  "updatedAtUtc": "2026-11-01T12:37:30.941Z",
+  "before": 1022192,
+  "after": 279953,
   "subsumeRemoved": 7071,
-  "block": 279157,
+  "block": 279297,
   "allow": 243,
   "raw": 413,
   "failedSources": []

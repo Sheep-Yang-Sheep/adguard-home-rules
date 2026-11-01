@@ -1,0 +1,69 @@
+name: 自动合并规则
+
+on:
+  # 每 4 小时整点运行一次（UTC）。北京时间约 08:00 / 12:00 / 16:00 / 20:00 / 00:00 / 04:00
+  schedule:
+    - cron: '0 */4 * * *'
+  # 支持手动触发：仓库 Actions 页面 → 自动合并规则 → Run workflow
+  workflow_dispatch:
+  # 修改配置或代码后立即跑一次验证
+  push:
+    branches: [main]
+    paths:
+      - 'sources.json'
+      - 'src/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: merge-rules
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: 准备 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 单元测试
+        run: node --test src/test.js
+
+      - name: 抓取并合并规则
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.event.repository.default_branch }}
+        run: node src/index.js
+
+      - name: 校验输出
+        run: |
+          FILE=dist/adguard-home-rules.txt
+          test -f "$FILE" || { echo "规则文件未生成"; exit 1; }
+          SIZE=$(stat -c%s "$FILE")
+          LINES=$(grep -c '^||' "$FILE" || true)
+          echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条"
+          if [ "$SIZE" -lt 1000000 ]; then echo "规则文件异常偏小，疑似抓取失败"; exit 1; fi
+
+      - name: 提交变更
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "本次无变更，跳过提交"
+            exit 0
+          fi
+          TS=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M')
+          git commit -m "chore(rules): 更新合并规则 ${TS} (北京时间)"
+          git push origin "HEAD:${{ github.event.repository.default_branch }}"

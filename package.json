@@ -1,0 +1,15 @@
+{
+  "name": "adguard-merged-rules",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "自动合并多个广告/追踪域名规则源，输出 AdGuard Home 可直接订阅的单一规则文件",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node src/index.js",
+    "build:offline": "node src/index.js --offline=.cache",
+    "test": "node --test src/test.js"
+  }
+}

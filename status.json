@@ -1,0 +1,12 @@
+{
+  "updatedAtBeijing": "2026-11-01 15:02",
+  "runAtBeijing": "2026-11-01 15:02",
+  "updatedAtUtc": "2026-11-01T07:02:31.009Z",
+  "before": 823029,
+  "after": 352848,
+  "subsumeRemoved": 13972,
+  "block": 352199,
+  "allow": 243,
+  "raw": 406,
+  "failedSources": []
+}

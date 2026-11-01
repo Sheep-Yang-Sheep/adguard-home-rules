@@ -39,6 +39,12 @@
       "homepage": "https://github.com/217heidai/adblockfilters"
     },
     {
+      "id": "hagezi",
+      "name": "HaGeZi Multi PRO",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt",
+      "homepage": "https://github.com/hagezi/dns-blocklists"
+    },
+    {
       "id": "antiad",
       "name": "anti-AD",
       "url": "https://anti-ad.net/adguard.txt",

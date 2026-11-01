@@ -230,6 +230,25 @@ test('非 GitHub 域名不生成无效镜像候选', () => {
   assert.ok(gh[0].startsWith('https://raw.githubusercontent.com/'));
 });
 
+test('jsDelivr 地址有备用 CDN 与 raw 回退，不押在单一入口', () => {
+  const url = 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt';
+  const list = buildCandidates(url);
+
+  assert.equal(list[0], url, '原始地址必须排第一，优先按配置的链接抓');
+  assert.ok(list.includes('https://fastly.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt'));
+  assert.ok(list.includes('https://gcore.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt'));
+
+  // @latest 是 jsDelivr 的别名，raw 不认识，必须换成 HEAD 才能拿到默认分支内容
+  const rawUrl = 'https://raw.githubusercontent.com/hagezi/dns-blocklists/HEAD/adblock/pro.txt';
+  assert.ok(list.includes(rawUrl), 'jsDelivr 全挂时要能回退到 GitHub raw');
+  assert.ok(list.includes(`https://ghfast.top/${rawUrl}`));
+  assert.equal(new Set(list).size, list.length, '候选地址不能重复');
+
+  // 显式分支的写法不被改写成 HEAD
+  const pinned = buildCandidates('https://cdn.jsdelivr.net/gh/a/b@main/c/d.txt');
+  assert.ok(pinned.includes('https://raw.githubusercontent.com/a/b/main/c/d.txt'));
+});
+
 // ---------- 解析层：hosts 行尾注释 ----------
 
 test('hosts 行尾的 # 注释不影响解析', () => {

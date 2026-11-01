@@ -6,6 +6,16 @@
 const RAW_GITHUB_RE =
   /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/;
 
+// jsDelivr 的 GitHub 通道：cdn / fastly / gcore 三个 CDN 入口共用同一套路径格式
+const JSDELIVR_GH_RE =
+  /^https:\/\/(?:cdn|fastly|gcore)\.jsdelivr\.net\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/;
+
+const JSDELIVR_HOSTS = [
+  'https://cdn.jsdelivr.net/gh',
+  'https://fastly.jsdelivr.net/gh',
+  'https://gcore.jsdelivr.net/gh',
+];
+
 const GH_PROXIES = ['https://ghfast.top/', 'https://gh-proxy.com/', 'https://ghproxy.net/'];
 
 const UA =
@@ -22,20 +32,34 @@ const BARE_DOMAIN_RE = /^[a-z0-9_*-]+(?:\.[a-z0-9_*-]+)*\.[a-z][a-z0-9-]{1,62}$/
 /**
  * 为一个 URL 生成候选访问地址（首项为原始地址）
  *
- * 只有 raw.githubusercontent.com 才存在 GitHub 反代；给 adrules.top / anti-ad.net
- * 这类域名前面拼 ghfast.top 只会拿到 404，纯属浪费一轮超时等待，因此不再生成。
+ * 只有 GitHub 上的内容才存在反代/镜像；给 adrules.top / anti-ad.net 这类域名前面
+ * 拼 ghfast.top 只会拿到 404，纯属浪费一轮超时等待，因此不生成。
  */
 export function buildCandidates(url) {
   const list = [url];
-  const m = RAW_GITHUB_RE.exec(url);
-  if (!m) return list;
 
-  const [, owner, repo, branch, filePath] = m;
-  for (const p of GH_PROXIES) list.push(`${p}${url}`);
-  list.push(`https://raw.gitmirror.com/${owner}/${repo}/${branch}/${filePath}`);
-  list.push(`https://cdn.jsdelivr.net/gh/${owner}/${repo}@${branch}/${filePath}`);
-  list.push(`https://fastly.jsdelivr.net/gh/${owner}/${repo}@${branch}/${filePath}`);
-  list.push(`https://gcore.jsdelivr.net/gh/${owner}/${repo}@${branch}/${filePath}`);
+  const raw = RAW_GITHUB_RE.exec(url);
+  if (raw) {
+    const [, owner, repo, branch, filePath] = raw;
+    for (const p of GH_PROXIES) list.push(`${p}${url}`);
+    list.push(`https://raw.gitmirror.com/${owner}/${repo}/${branch}/${filePath}`);
+    for (const host of JSDELIVR_HOSTS) list.push(`${host}/${owner}/${repo}@${branch}/${filePath}`);
+    return [...new Set(list)];
+  }
+
+  // jsDelivr 的 gh 通道同样是「一个地址、多个入口」：cdn.jsdelivr.net 区域性故障时
+  // fastly / gcore 通常还活着，三个都挂再回退到 GitHub raw。
+  // `@latest` 是 jsDelivr 自己的版本别名，raw 不认识，必须先换成 HEAD
+  // （raw 会把 HEAD 解析成默认分支的最新提交）。
+  const jd = JSDELIVR_GH_RE.exec(url);
+  if (jd) {
+    const [, owner, repo, ref, filePath] = jd;
+    for (const host of JSDELIVR_HOSTS) list.push(`${host}/${owner}/${repo}@${ref}/${filePath}`);
+    const rawRef = ref === 'latest' ? 'HEAD' : ref;
+    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${rawRef}/${filePath}`;
+    list.push(rawUrl);
+    for (const p of GH_PROXIES) list.push(`${p}${rawUrl}`);
+  }
 
   return [...new Set(list)];
 }

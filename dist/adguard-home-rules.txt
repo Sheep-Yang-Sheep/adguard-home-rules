@@ -3,26 +3,27 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-01 21:59
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-01 22:50
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
-! 合并前规则数（各上游合计，含重复）: 609,764
-! 去重后规则数: 287,090
-!   其中屏蔽规则去重后: 286,368
+! 合并前规则数（各上游合计，含重复）: 609,946
+! 去重后规则数: 287,095
+!   其中屏蔽规则去重后: 286,373
 !   其中白名单例外去重后: 243
 !   其中通配/特殊规则去重后: 479
 ! 被父域规则覆盖而移除的冗余规则: 7,137
 !   其中子域规则: 7,071 · 通配规则: 66
-! 合并后规则数: 279,953
-!   其中屏蔽规则: 279,297
+! 合并后规则数: 279,958
+!   其中屏蔽规则: 279,302
 !   其中白名单例外: 243
 !   其中通配/特殊规则: 413
 !
 ! ================= 体检报告 =================
 ! 被父域白名单 @@ 架空的屏蔽规则: 4（仍在文件中，但实际不会拦截）
-! 同域既屏蔽又放行（按 @@ 生效）: 29
+! 同域既屏蔽又放行（按 @@ 生效）: 28
 !   其中带 $important、会压过 @@ 的: 0
+! 实际不生效的屏蔽规则合计: 32（= 架空 + 同域放行 - $important 压制）
 ! 解析阶段丢弃 139 行: 非法域名/IP 54 · 注释 51 · 正则规则 27 · 无法识别 4 · 带路径的 URL 规则 3
 !
 ! ================= 上游订阅源（7 个地址 / 6 个独立上游）=================
@@ -53,7 +54,7 @@
 ! 7. OISD Small
 !    https://small.oisd.nl/
 !    主页 https://oisd.nl/
-!    本次解析有效规则 59,200 条
+!    本次解析有效规则 59,382 条
 !
 ! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。
 
@@ -71618,6 +71619,7 @@
 ||dnqftnryxfngg.website^
 ||dnqloqyjfbdid.site^
 ||dnqmuubtrodvi.site^
+||dnrbljgsbuoze.space^
 ||dnre5xkn2r25r.cloudfront.net^
 ||dnrf0215.com^
 ||dnrplhluklgsh.site^
@@ -117510,6 +117512,7 @@
 ||jqacpuetzhjta.space^
 ||jqatvpsdmuetf.online^
 ||jqbhtv.icu^
+||jqbvfqcpjemmw.website^
 ||jqcdn01.herokuapp.com^
 ||jqcdn03.herokuapp.com^
 ||jqcdn2.herokuapp.com^
@@ -120326,6 +120329,7 @@
 ||kirujh.com^
 ||kirykoy.com^
 ||kis.threefoxes.com.au^
+||kiseimpocvokx.space^
 ||kiseki.com^
 ||kishkeenocyte.com^
 ||kiss.blockplus.cc^
@@ -120787,6 +120791,7 @@
 ||klwwxepxnqnhr.website^
 ||klxfmolddnlpl.website^
 ||klxikmcosxzbd.online^
+||klxvulujbpexn.online^
 ||kly.tcfz84v8qh1iertxuq7owff3ym.cyou^
 ||klydren.shop^
 ||klyekatyvobsz.space^
@@ -181213,6 +181218,7 @@
 ||qzthc.vayasleep.com^
 ||qztlybprmppqv.online^
 ||qzu5.carrefour-banque.fr^
+||qzumixdsgqodk.website^
 ||qzvtzfebmeleg.website^
 ||qzwbod.blackdiamondequipment.com^
 ||qzwhkc.cleverdeals.de^

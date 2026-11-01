@@ -1,17 +1,21 @@
 {
-  "updatedAtBeijing": "2026-11-01 21:59",
-  "runAtBeijing": "2026-11-01 21:59",
-  "updatedAtUtc": "2026-11-01T13:59:38.306Z",
+  "updatedAtBeijing": "2026-11-01 22:50",
+  "runAtBeijing": "2026-11-01 22:50",
+  "updatedAtUtc": "2026-11-01T14:50:11.062Z",
+  "runAtUtc": "2026-11-01T14:50:11.062Z",
   "upstreams": 6,
-  "before": 609764,
-  "after": 279953,
+  "before": 609946,
+  "after": 279958,
   "subsumeRemoved": 7071,
-  "block": 279297,
+  "rawCovered": 66,
+  "block": 279302,
   "allow": 243,
   "raw": 413,
   "allowShadowed": 4,
-  "conflicts": 29,
+  "conflicts": 28,
   "importantOverAllow": 0,
+  "deadRules": 32,
+  "badfilterKept": 0,
   "skippedTotal": 139,
   "skipped": {
     "comment": 51,
@@ -28,6 +32,6 @@
     "217heidai": 241854,
     "antiad": 100958,
     "cat": 206214,
-    "oisd": 59200
+    "oisd": 59382
   }
 }

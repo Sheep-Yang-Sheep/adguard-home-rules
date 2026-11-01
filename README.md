@@ -1,6 +1,6 @@
 # AdGuard Home 合并规则合集
 
-把 6 个独立上游（7 个订阅地址）的广告 / 追踪域名规则，合并成**一个** `.txt` 文件，每 **4 小时**自动更新一次，软路由只需订阅一条链接。
+把 7 个独立上游（8 个订阅地址）的广告 / 追踪域名规则，合并成**一个** `.txt` 文件，每 **4 小时**自动更新一次，软路由只需订阅一条链接。
 
 规则主体全部来自各上游作者，本仓库只做抓取、去重、父子域收敛与格式化，不做人工增删。
 
@@ -37,23 +37,23 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-01 23:13` 周日
-- **上次自动任务运行时间（北京时间）**：`2026-11-01 23:13`
+- **本合集更新时间（北京时间）**：`2026-11-01 23:54` 周日
+- **上次自动任务运行时间（北京时间）**：`2026-11-01 23:54`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 609,890 |
-| 去重后规则数 | 287,095 |
-| 被父域规则覆盖而移除的冗余规则 | 7,137 |
-| **合并后规则数** | **279,958** |
-| └ 屏蔽规则 | 279,302 |
+| 合并前规则数（各上游合计，含重复） | 821,629 |
+| 去重后规则数 | 364,992 |
+| 被父域规则覆盖而移除的冗余规则 | 13,589 |
+| **合并后规则数** | **351,403** |
+| └ 屏蔽规则 | 350,753 |
 | └ 白名单例外 `@@` | 243 |
-| └ 通配 / 特殊规则 | 413 |
+| └ 通配 / 特殊规则 | 407 |
 | 被白名单架空的屏蔽规则（不生效） | 4 |
-| 同域既屏蔽又放行（按 `@@` 生效） | 28 |
+| 同域既屏蔽又放行（按 `@@` 生效） | 29 |
 | └ 其中 `$important` 会压过 `@@` | 0 |
-| **实际不生效的屏蔽规则合计** | **32** |
-| 解析阶段丢弃的行（DNS 层无效） | 139 |
+| **实际不生效的屏蔽规则合计** | **33** |
+| 解析阶段丢弃的行（DNS 层无效） | 153 |
 
 > 「本合集更新时间」只在规则内容真的发生变化时才刷新；「上次任务运行时间」每 4 小时刷新一次，可据此判断自动任务是否正常。
 > 若「上次任务运行时间」超过 8 小时没动，说明自动任务已停摆，请到 Actions 页面查看失败原因。
@@ -69,9 +69,10 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 2 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
 | 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,214 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
-| 5 | anti-AD | https://anti-ad.net/adguard.txt | 100,958 |
-| 6 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
-| 7 | OISD Small | https://small.oisd.nl/ | 59,326 |
+| 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,739 |
+| 6 | anti-AD | https://anti-ad.net/adguard.txt | 100,958 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
+| 8 | OISD Small | https://small.oisd.nl/ | 59,326 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 
@@ -82,6 +83,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 每 4 小时由 GitHub Actions 自动执行一次：
 
 1. **抓取**：并发拉取全部上游源，GitHub raw 直连失败时自动回退到 `ghfast.top` / `gh-proxy.com` / `ghproxy.net` / `gitmirror` / `jsDelivr` 等镜像。
+   - 以 `cdn.jsdelivr.net` 地址订阅的源（如 HaGeZi），会依次尝试 `fastly` / `gcore` 两个备用 CDN，全挂再回退到 GitHub raw，不押在单一入口上
    - 每份响应都会做内容体检：HTML 错误页、限流页、被截断的半截文件一律判为失败，不会混进合并结果
    - 单源规则数若比上一轮骤降超过 50%，同样判为失败（防止上游故障时悄悄少掉十几万条）
    - 只有低于 **75% 的独立上游**成功时才放弃发布；同一上游的多个镜像地址不会重复扣分
@@ -91,7 +93,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
    - 中文域名自动转 punycode
    - 剔除元素隐藏规则（`##`）、URL 路径规则、正则规则与 DNS 层无效的修饰符（如 `$third-party`、`$app=`），这些在 DNS 过滤中不会生效，留着只会拖慢匹配
    - `$important`、`$badfilter`、`$client`、`$denyallow` 等有效修饰符原样保留
-3. **跨源去重**：7 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
+3. **跨源去重**：8 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
    - 内容完全相同的镜像地址（同一份规则的两个入口）只计一次，不会让「合并前规则数」虚高
 4. **父子域收敛**：若 `||a.com^` 已被屏蔽，则 `||b.a.com^`、`||c.b.a.com^` 这类子域规则属于冗余（`||a.com^` 已覆盖全部子域），直接剔除。这一步通常能砍掉 3%～8% 的冗余条目。
    - 白名单例外 `@@` **只去重、不收敛**，避免误放行
@@ -119,10 +121,10 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 ghfast.top / gh-proxy.com 通道。
 
 **Q：规则数量比上游加起来少很多，是不是漏了？**
-不是。7 个地址高度重叠，去重 + 父子域收敛后留存的都是有效规则，拦截效果不变而查询性能更好。少掉多少、为什么少，规则文件头部注释里都有明细。
+不是。8 个地址高度重叠，去重 + 父子域收敛后留存的都是有效规则，拦截效果不变而查询性能更好。少掉多少、为什么少，规则文件头部注释里都有明细。
 
 **Q：软路由性能吃紧怎么办？**
-本项目已剔除全部正则规则，仅保留域名级规则，x86 软路由跑 20 万条域名规则几乎没有额外开销。若内存很紧张，可在 `sources.json` 的 `sources` 数组里删掉 `oisd` 后重新运行。
+本项目已剔除全部正则规则，仅保留域名级规则，x86 软路由跑 30 万条域名规则几乎没有额外开销。若内存很紧张，可在 `sources.json` 的 `sources` 数组里删掉 `hagezi` / `oisd` 后重新运行。
 
 **Q：自动任务一直失败，提示"比上轮少 20% 以上，拒绝发布"怎么办？**
 这是熔断保护：上游规则突然少了两成以上时宁可不发，避免把残缺规则推给软路由。若确认是上游**合法瘦身**（或某个大源永久下线导致总量下降），到 Actions 页面手动 **Run workflow** 并勾选 `force`，跑一次即可把基线重置到新水位，之后定时任务恢复正常。

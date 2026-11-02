@@ -37,16 +37,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-01 23:54` 周日
-- **上次自动任务运行时间（北京时间）**：`2026-11-02 04:26`
+- **本合集更新时间（北京时间）**：`2026-11-02 12:12` 周一
+- **上次自动任务运行时间（北京时间）**：`2026-11-02 12:12`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 821,629 |
-| 去重后规则数 | 364,992 |
-| 被父域规则覆盖而移除的冗余规则 | 13,589 |
-| **合并后规则数** | **351,403** |
-| └ 屏蔽规则 | 350,753 |
+| 合并前规则数（各上游合计，含重复） | 822,264 |
+| 去重后规则数 | 365,241 |
+| 被父域规则覆盖而移除的冗余规则 | 13,586 |
+| **合并后规则数** | **351,655** |
+| └ 屏蔽规则 | 351,005 |
 | └ 白名单例外 `@@` | 243 |
 | └ 通配 / 特殊规则 | 407 |
 | 被白名单架空的屏蔽规则（不生效） | 4 |
@@ -55,8 +55,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | **实际不生效的屏蔽规则合计** | **33** |
 | 解析阶段丢弃的行（DNS 层无效） | 153 |
 
-> 「本合集更新时间」只在规则内容真的发生变化时才刷新；「上次任务运行时间」每 4 小时刷新一次，可据此判断自动任务是否正常。
-> 若「上次任务运行时间」超过 8 小时没动，说明自动任务已停摆，请到 Actions 页面查看失败原因。
+> 「本合集更新时间」只在规则内容真的发生变化时才刷新，「上次任务运行时间」由定时任务刷新，可据此判断自动任务是否正常。
+> 若「上次任务运行时间」超过 **12 小时**没动，说明自动任务真的停摆了，请到 Actions 页面查看失败原因。
+> GitHub 自带的 `schedule` 只是 best-effort，丢单并不罕见，本仓库因此挂了两条错开的定时 + 提供外部触发兜底，原因和补救办法见[第六节](#六常见问题)。
 
 
 ---
@@ -67,12 +68,12 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | --- | --- | --- | --- |
 | 1 | 秋风 AWAvenue Ads Rule | https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt | 972 |
 | 2 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,214 |
+| 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,438 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,739 |
-| 6 | anti-AD | https://anti-ad.net/adguard.txt | 100,958 |
-| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,214 |
-| 8 | OISD Small | https://small.oisd.nl/ | 59,326 |
+| 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,225 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,438 |
+| 8 | OISD Small | https://small.oisd.nl/ | 59,470 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 
@@ -91,13 +92,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
    - `0.0.0.0 domain` 等 hosts 写法 → `||domain^`（行尾 `#` 注释会被剥掉）
    - `||*.example.com^` → `||example.com^`（`||` 本身已覆盖全部子域）
    - 中文域名自动转 punycode
-   - 剔除元素隐藏规则（`##`）、URL 路径规则、正则规则与 DNS 层无效的修饰符（如 `$third-party`、`$app=`），这些在 DNS 过滤中不会生效，留着只会拖慢匹配
+   - 剔除元素隐藏规则（`##`）、URL 路径规则与正则规则，这些在 DNS 过滤中不会生效，留着只会拖慢匹配
+   - `$third-party`、`$~first-party`、`$app=` 这类**只描述请求上下文**的修饰符会被剥掉、域名规则保留 —— DNS 过滤不区分 referrer 与 App，留着修饰符没有任何意义，但为了它丢掉整条规则就太亏了
+   - `$popup`、`$document`、`$domain=`、`$removeparam` 这类会改变「对哪个域名、做哪种处理」的修饰符无法降级，带它们的整条规则会被丢弃（剥掉会把「限站点放行 / 只去参数」变成「全站硬屏蔽」）
    - `$important`、`$badfilter`、`$client`、`$denyallow` 等有效修饰符原样保留
 3. **跨源去重**：8 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
    - 内容完全相同的镜像地址（同一份规则的两个入口）只计一次，不会让「合并前规则数」虚高
 4. **父子域收敛**：若 `||a.com^` 已被屏蔽，则 `||b.a.com^`、`||c.b.a.com^` 这类子域规则属于冗余（`||a.com^` 已覆盖全部子域），直接剔除。这一步通常能砍掉 3%～8% 的冗余条目。
    - 白名单例外 `@@` **只去重、不收敛**，避免误放行
    - 带 `$important` 的规则不参与剔除（它优先级高于 `@@`，删掉会改变实际拦截行为）
+   - `co.uk`、`com.cn`、`github.io` 这类 **共享后缀**不充当收敛父域：一条 `||co.uk^` 就能把几万条子域规则一次删光，拦截效果虽然不变，但规则数会瞬间塌陷、误触发 20% 熔断导致整轮停更
 5. **输出**：按字母序排序后写出，保证同样内容生成同样的文件，`git diff` 只反映真实变化。
 
 ---
@@ -128,6 +132,19 @@ jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 gh
 
 **Q：自动任务一直失败，提示"比上轮少 20% 以上，拒绝发布"怎么办？**
 这是熔断保护：上游规则突然少了两成以上时宁可不发，避免把残缺规则推给软路由。若确认是上游**合法瘦身**（或某个大源永久下线导致总量下降），到 Actions 页面手动 **Run workflow** 并勾选 `force`，跑一次即可把基线重置到新水位，之后定时任务恢复正常。
+
+**Q：说好每 4 小时更新，为什么「上次任务运行时间」停了好几个小时？**
+大概率不是你这边的问题，而是 GitHub 的定时任务丢了。`schedule` 只是 best-effort：高峰期会延迟，负载高时还会**整次丢弃**——连一条失败的运行记录都不会留下。本仓库建仓头 20 小时里有 5 个定时点，只跑起来 1 次，其余 4 次在 Actions 里查无此事。
+
+本仓库的应对是挂两条错开的 cron（`:07` 主跑、`:37` 补跑）互为备份，并且补跑在规则没变时不会多刷一次提交。如果你对时效要求高，可以再叠一层外部定时器（cron-job.org、Cloudflare Worker、自己的 VPS 都行），每 4 小时打一次接口触发，这条路径不经过 GitHub 的调度器，最可靠：
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <对仓库有 Actions 写权限的 PAT>" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/Sheep-Yang-Sheep/adguard-home-rules/dispatches \
+  -d '{"event_type":"update-rules"}'
+```
 
 **Q：想增删订阅源？**
 编辑 `sources.json` 的 `sources` 数组，提交后会自动触发一次合并。同一份内容的多个入口可以并存，用 `upstream` 字段标记为同一个上游即可（互为备份、不重复计数）。

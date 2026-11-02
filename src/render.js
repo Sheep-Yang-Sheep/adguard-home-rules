@@ -100,6 +100,9 @@ export function renderRules(result, ctx) {
   if (stats.badfilterKept) {
     out.push(`! 因 $badfilter 点名而保留、未参与父子域收敛的规则: ${n(stats.badfilterKept)}`);
   }
+  if (stats.sharedSuffixKept) {
+    out.push(`! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: ${n(stats.sharedSuffixKept)}`);
+  }
   if (stats.skippedTotal) {
     const detail = Object.entries(stats.skipped)
       .sort((a, b) => b[1] - a[1])
@@ -204,6 +207,7 @@ export function renderReadme(result, ctx) {
     '{{SOURCES}}': sourceTable,
     '{{FAILED}}': failBlock,
     '{{HOMEPAGE}}': repo.homepage,
+    '{{REPO_SLUG}}': repo.slug,
   };
 
   let md = tpl;
@@ -241,6 +245,7 @@ export function renderStatus(result, ctx) {
         importantOverAllow: stats.importantOverAllow,
         deadRules: stats.deadRules,
         badfilterKept: stats.badfilterKept,
+        sharedSuffixKept: stats.sharedSuffixKept ?? 0,
         skippedTotal: stats.skippedTotal,
         skipped: stats.skipped,
         failedSources: (ctx.failedSources || []).map((f) => `${f.name}: ${f.error}`),

@@ -35,9 +35,55 @@ test('$important 标记', () => {
   assert.equal(r.important, true);
 });
 
-test('DNS 层无效的修饰符被丢弃', () => {
-  assert.equal(parseLine('||example.com^$third-party').kind, 'skip');
-  assert.equal(parseLine('||example.com^$app=com.tencent.mm').kind, 'skip');
+test('DNS 层无意义的修饰符被剥掉、规则本体保留', () => {
+  // $third-party / $app= 只描述请求上下文（是否第三方、来自哪个 App），DNS 过滤无法区分，
+  // 剥掉修饰符后域名规则依然成立。以前这里整条丢弃，上游一旦混入 adblock 格式就会静默少一批。
+  const a = parseLine('||example.com^$third-party');
+  assert.equal(a.kind, 'block');
+  assert.equal(a.domain, 'example.com');
+  assert.equal(parseLine('||example.com^$app=com.tencent.mm').kind, 'block');
+  assert.equal(parseLine('||example.com^$~third-party').kind, 'block');
+
+  // 与 $important 组合时，$important 不能被顺手丢掉
+  const b = parseLine('||example.com^$important,third-party');
+  assert.equal(b.kind, 'block');
+  assert.equal(b.important, true);
+});
+
+test('会改变拦截语义的修饰符仍然整条丢弃', () => {
+  // $domain= 只对指定站点生效、$removeparam 只是去掉参数，剥掉修饰符会变成全站硬屏蔽
+  assert.equal(parseLine('||example.com^$domain=foo.com').kind, 'skip');
+  assert.equal(parseLine('||example.com^$removeparam=utm_source').kind, 'skip');
+  assert.equal(parseLine('||example.com^$popup').kind, 'skip');
+});
+
+test('无空格的行尾 # 注释也能剥掉', () => {
+  const r = parseLine('||a.com^#说明文字');
+  assert.equal(r.kind, 'block');
+  assert.equal(r.domain, 'a.com');
+  assert.equal(parseLine('0.0.0.0 b.com#注释').domain, 'b.com');
+});
+
+test('共享后缀不参与父子域收敛', () => {
+  // co.uk / github.io 被屏蔽时，收敛不能把名下所有子域规则一起删掉，
+  // 否则规则数瞬间塌陷，会误触发工作流「比上轮少 20% 就拒绝发布」的熔断。
+  const { keep, removed, protectedHits } = subsumeByParent([
+    'co.uk',
+    'a.co.uk',
+    'b.a.co.uk',
+    'github.io',
+    'foo.github.io',
+    'example.de',
+    'x.example.de',
+  ]);
+  // 共享后缀自己保留，其直接子域也保留
+  assert.ok(keep.includes('a.co.uk'));
+  assert.ok(keep.includes('foo.github.io'));
+  // 但更深的子域仍可被「真正的父域」收起
+  assert.ok(removed.some((r) => r.domain === 'b.a.co.uk' && r.parent === 'a.co.uk'));
+  // 普通域名照旧收敛
+  assert.ok(removed.some((r) => r.domain === 'x.example.de' && r.parent === 'example.de'));
+  assert.equal(protectedHits, 2);
 });
 
 test('$badfilter 原样保留', () => {

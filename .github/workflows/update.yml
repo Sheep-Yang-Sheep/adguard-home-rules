@@ -2,11 +2,16 @@ name: 自动合并规则
 
 on:
   # 每 4 小时运行一次（UTC）。
-  # 刻意避开整点：GitHub 的 cron 在 :00 最拥堵，经常被延迟甚至直接丢弃，
-  # 用 :17 / :07 这类零散分钟能显著提高准时率。
+  # 刻意避开整点：GitHub 的 cron 在 :00 最拥堵，经常被延迟甚至直接丢弃。
   # 对应北京时间约 00:07 / 04:07 / 08:07 / 12:07 / 16:07 / 20:07。
+  #
+  # 第二条 cron 是补跑位：GitHub 的定时任务只是 best-effort，实测新仓库 20 小时内
+  # 5 个时点只跑了 1 次，其余连 run 对象都没创建。多挂一条错开 1.5 小时的 cron，
+  # 等于每个 4 小时窗口多一次抓取机会；规则没变时「提交变更」步骤会自己跳过，
+  # 不会因此多刷一倍的纯时间戳提交。
   schedule:
     - cron: '7 */4 * * *'
+    - cron: '37 1-23/4 * * *'
   # 支持手动触发：仓库 Actions 页面 → 自动合并规则 → Run workflow
   # force=true 可跳过「比上轮少 20% 就拒绝发布」的熔断，用于上游合法瘦身后解卡
   workflow_dispatch:
@@ -15,6 +20,16 @@ on:
         description: '跳过 20% 跌幅熔断，强制发布本次结果'
         type: boolean
         default: false
+  # 外部定时器兜底：GitHub 自己的 cron 丢单时，这是唯一能让更新准点的办法。
+  # 用一个对仓库有 Actions 写权限的 PAT 打这个接口即可：
+  #   curl -X POST \
+  #     -H "Authorization: Bearer <PAT>" \
+  #     -H "Accept: application/vnd.github+json" \
+  #     https://api.github.com/repos/<owner>/<repo>/dispatches \
+  #     -d '{"event_type":"update-rules"}'
+  # 详见 README「六、常见问题 · 更新时间为什么不准」。
+  repository_dispatch:
+    types: [update-rules]
   # 修改配置或代码后立即跑一次验证
   push:
     branches: [main]
@@ -55,7 +70,16 @@ jobs:
         run: |
           PREV=0
           if [ -f status.json ]; then
-            PREV=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('status.json','utf8')).block || 0))")
+            # status.json 万一被冲突残留写坏（比如 rebase 剩下的半截 JSON），
+            # 这里不能直接抛异常 —— 否则整个 job 在抓取之前就失败，永远自愈不了
+            PREV=$(node -e "
+              try {
+                const b = JSON.parse(require('fs').readFileSync('status.json','utf8')).block;
+                process.stdout.write(String(typeof b === 'number' ? b : 0));
+              } catch {
+                process.stdout.write('0');
+              }
+            ")
           fi
           echo "block=$PREV" >> "$GITHUB_OUTPUT"
           echo "上轮屏蔽规则基线: $PREV 条"
@@ -105,6 +129,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 距上次提交多久（秒）。补跑 cron 只负责「多给一次抓取机会」，
+          # 规则没变时不必再刷一次心跳，否则一天会多出一倍纯时间戳提交。
+          LAST_TS=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+          AGE=$(( $(date +%s) - LAST_TS ))
+
           git add -A
 
           if git diff --cached --quiet; then
@@ -112,13 +142,30 @@ jobs:
             exit 0
           fi
 
+          DIST=dist/adguard-home-rules.txt
+          if git diff --cached --name-only | grep -qx "$DIST"; then
+            KIND=rules
+          else
+            KIND=heartbeat
+          fi
+
+          if [ "$KIND" = "heartbeat" ] && [ "$AGE" -lt 7200 ]; then
+            echo "规则未变，且距上次提交只有 $((AGE / 60)) 分钟（< 120），跳过心跳提交"
+            exit 0
+          fi
+
           TS=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M')
-          git commit -m "chore(rules): 更新合并规则 ${TS} (北京时间)"
+          if [ "$KIND" = "rules" ]; then
+            git commit -m "chore(rules): 更新合并规则 ${TS} (北京时间)"
+          else
+            # 单独标记，便于在历史里区分「规则真的变了」和「只是心跳」
+            git commit -m "chore(heartbeat): 记录运行时间 ${TS} (北京时间)"
+          fi
 
           BRANCH="${{ github.event.repository.default_branch }}"
           for i in 1 2 3; do
             if git push origin "HEAD:$BRANCH"; then
-              echo "推送成功"
+              echo "推送成功（$KIND）"
               exit 0
             fi
             echo "推送失败（第 $i 次），变基后重试"

@@ -9,14 +9,53 @@
  */
 
 /**
+ * 共享后缀保护名单
+ *
+ * 父子域收敛的前提是「这个父域确实属于同一个人」。`co.uk`、`com.cn` 这类二级公共后缀，
+ * 以及 `github.io`、`netlify.app` 这类由无数陌生人共用的平台域名，都不满足这个前提。
+ *
+ * 一旦某个上游混进一条 `||co.uk^`，收敛会把名下几万条子域规则一次性删光。拦截效果其实
+ * 没变（父域规则本来就覆盖全部子域），但规则数会瞬间塌陷，直接触发工作流「比上轮少 20%
+ * 就拒绝发布」的熔断，导致整轮失败、订阅停更 —— 一条脏数据放大成全局故障。
+ *
+ * 所以这类域名只正常参与屏蔽，不充当收敛的父域。
+ */
+const CC_GENERIC_SLD = new Set([
+  'com', 'co', 'net', 'org', 'gov', 'ac', 'edu', 'or', 'ne', 'go',
+  'nic', 'gen', 'web', 'sch', 'mil', 'nom', 'gob', 'gouv', 'biz', 'idv',
+]);
+
+const PLATFORM_SUFFIXES = new Set([
+  'github.io', 'gitlab.io', 'netlify.app', 'vercel.app', 'pages.dev', 'workers.dev',
+  'blogspot.com', 'herokuapp.com', 'azurewebsites.net', 'cloudfront.net', 'onrender.com',
+  'fly.dev', 'web.app', 'firebaseapp.com', 'r2.dev', 'trycloudflare.com',
+  'readthedocs.io', 'surge.sh', 'glitch.me', 's3.amazonaws.com',
+]);
+
+/**
+ * 是否是「多人共用、不该拿来收敛」的后缀
+ * @param {string} domain 已归一化的小写域名
+ */
+export function isSharedSuffix(domain) {
+  if (PLATFORM_SUFFIXES.has(domain)) return true;
+  const parts = domain.split('.');
+  if (parts.length !== 2) return false;
+  const [sld, tld] = parts;
+  // 两级 ccTLD：co.uk / com.cn / com.au / or.jp ……
+  // 只匹配「通用二级标签 + 两字母国别后缀」，不会误伤 example.de 这类正常域名
+  return tld.length === 2 && CC_GENERIC_SLD.has(sld);
+}
+
+/**
  * 找出被父域规则覆盖的域名
  * @param {string[]} domains 已去重的屏蔽域名
- * @returns {{keep:string[], removed:Array<{domain:string, parent:string}>}}
+ * @returns {{keep:string[], removed:Array<{domain:string, parent:string}>, protectedHits:number}}
  */
 export function subsumeByParent(domains) {
   const set = new Set(domains);
   const keep = [];
   const removed = [];
+  let protectedHits = 0;
 
   for (const d of domains) {
     let parent = null;
@@ -24,8 +63,13 @@ export function subsumeByParent(domains) {
     while (idx !== -1) {
       const candidate = d.slice(idx + 1);
       if (set.has(candidate)) {
-        parent = candidate;
-        break;
+        if (isSharedSuffix(candidate)) {
+          // 共享后缀只屏蔽自己，不吞掉别人的子域；继续往上找真正的归属父域
+          protectedHits += 1;
+        } else {
+          parent = candidate;
+          break;
+        }
       }
       idx = d.indexOf('.', idx + 1);
     }
@@ -33,7 +77,7 @@ export function subsumeByParent(domains) {
     else keep.push(d);
   }
 
-  return { keep, removed };
+  return { keep, removed, protectedHits };
 }
 
 /**
@@ -167,7 +211,7 @@ export function mergeSources(sources) {
     else if (keepForBadfilter.has(domain)) pinnedDomains.push(domain);
     else subsumeCandidates.push(domain);
   }
-  const { keep, removed } = subsumeByParent(subsumeCandidates);
+  const { keep, removed, protectedHits } = subsumeByParent(subsumeCandidates);
 
   const finalBlock = [
     ...keep.map((d) => ({ domain: d, important: false })),
@@ -236,6 +280,8 @@ export function mergeSources(sources) {
       rawUnique,
       subsumeRemoved: removed.length,
       rawCovered,
+      // 命中共享后缀保护、因而没被父域吞掉的子域规则条数
+      sharedSuffixKept: protectedHits,
       allowShadowed: shadowed.count,
       allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,

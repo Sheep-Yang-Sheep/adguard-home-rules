@@ -24,6 +24,27 @@ const DNS_SAFE_MODIFIERS = new Set(['important']);
 const KEEP_AS_RAW_MODIFIERS = /^(badfilter|client|ctag|denyallow|dnsrewrite)/;
 
 /**
+ * 只描述「请求上下文」的修饰符：是否第三方、来自哪个 App。
+ *
+ * DNS 过滤没有 referrer、没有 App 归属，这些修饰符对结果毫无影响，剥掉之后规则本体
+ * （域名）依然成立。以前这里一律整条丢弃，和 README「剔除 DNS 层无效的修饰符」的说法
+ * 正好相反：上游一旦混进 adblock 格式的规则，就会静默少掉一整批，而且只在统计里体现为
+ * 「DNS 层无效修饰符」几行字，很难发现是丢了整条规则。
+ *
+ * 注意 `$popup`、`$document`、`$domain=`、`$removeparam` 这类不在其列 —— 它们改变的是
+ * 「对哪个域名、做哪种处理」，剥掉会把「限站点放行 / 只去参数」变成「全站屏蔽」，
+ * 属于会改变拦截语义的修饰符，仍按不支持处理（整条丢弃才安全）。
+ */
+const IGNORABLE_MODIFIERS = new Set([
+  'third-party',
+  '~third-party',
+  'first-party',
+  '~first-party',
+  'all',
+]);
+const IGNORABLE_PREFIXES = ['app='];
+
+/**
  * 域名归一化：小写、去首尾点、校验合法性、转 punycode
  * @returns {string|null}
  */
@@ -86,8 +107,15 @@ function parseNetworkRule(body, isAllow) {
     return { kind: 'raw', rule: `${isAllow ? '@@' : ''}||${body}` };
   }
 
-  const unknownModifier = modifiers.some((m) => !DNS_SAFE_MODIFIERS.has(m.split('=')[0]));
-  if (unknownModifier) return { kind: 'skip', reason: 'unsupported-modifier' };
+  const unknownModifiers = modifiers.filter((m) => !DNS_SAFE_MODIFIERS.has(m.split('=')[0]));
+  if (unknownModifiers.length) {
+    const allIgnorable = unknownModifiers.every(
+      (m) => IGNORABLE_MODIFIERS.has(m) || IGNORABLE_PREFIXES.some((p) => m.startsWith(p))
+    );
+    if (!allIgnorable) return { kind: 'skip', reason: 'unsupported-modifier' };
+  }
+
+  const important = modifiers.some((m) => m.split('=')[0] === 'important');
 
   if (host.includes('*')) {
     // `||*.example.com^` 与 `||example.com^` 在屏蔽场景下等价，可归一化后参与去重
@@ -103,9 +131,9 @@ function parseNetworkRule(body, isAllow) {
 
   // `@@||example.com^$important` 的 $important 不能丢：它决定这条例外能否压过
   // 带 $important 的屏蔽规则，丢了就降级成普通例外，和解说文档自相矛盾
-  if (isAllow) return { kind: 'allow', domain, important: modifiers.includes('important') };
+  if (isAllow) return { kind: 'allow', domain, important };
   // `$important` 会提高优先级，合并时若同域已存在普通规则需升级
-  return { kind: 'block', domain, important: modifiers.includes('important') };
+  return { kind: 'block', domain, important };
 }
 
 /**
@@ -134,9 +162,13 @@ export function parseLine(input) {
 
   // hosts 列表常见写法：`0.0.0.0 ads.example.com # 说明`。
   // 不剥掉行尾注释的话，HOSTS_RE 和裸域名正则都会匹配失败，整条规则被静默丢弃。
-  const trailingHash = line.search(/\s#/);
-  if (trailingHash > 0) {
-    line = line.slice(0, trailingHash).trim();
+  // 有些上游是手工维护的，`#` 前面不带空格（`||a.com^#说明`），以前会一路走到
+  // 「缺 ^ 锚定」分支被整条丢掉，这里一并截断。
+  // 只在 `$` 修饰符之前找 `#`，避免误伤 `$removeparam=#xxx` 这类合法修饰符。
+  const hashAt = line.indexOf('#');
+  const dollarAt = line.indexOf('$');
+  if (hashAt > 0 && (dollarAt === -1 || hashAt < dollarAt)) {
+    line = line.slice(0, hashAt).trim();
     if (!line) return { kind: 'skip', reason: 'comment' };
   }
 

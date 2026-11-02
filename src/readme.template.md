@@ -121,11 +121,11 @@ jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 gh
 **Q：说好每 4 小时更新，为什么「上次任务运行时间」停了好几个小时？**
 大概率不是你这边的问题，而是 GitHub 的定时任务丢了。`schedule` 只是 best-effort：高峰期会延迟，负载高时还会**整次丢弃**——连一条失败的运行记录都不会留下。本仓库建仓头 20 小时里有 5 个定时点，只跑起来 1 次，其余 4 次在 Actions 里查无此事。
 
-本仓库的应对是挂两条错开的 cron（`:07` 主跑、`:37` 补跑）互为备份，并且补跑在规则没变时不会多刷一次提交。如果你对时效要求高，可以再叠一层外部定时器（cron-job.org、Cloudflare Worker、自己的 VPS 都行），每 4 小时打一次接口触发，这条路径不经过 GitHub 的调度器，最可靠：
+本仓库的应对是挂两条错开的 cron（`:07` 主跑、`:37` 补跑）互为备份，并且补跑在规则没变时不会多刷一次提交。如果你对时效要求高，可以再叠一层外部定时器（cron-job.org、Cloudflare Worker、自己的 VPS 都行），每 4 小时打一次接口触发，这条路径不经过 GitHub 的调度器，最可靠。现成的 Worker 已经放在 [`scripts/cloudflare-worker/`](scripts/cloudflare-worker/)，`wrangler deploy` 三个命令就能上：
 
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer <对仓库有 Actions 写权限的 PAT>" \
+  -H "Authorization: Bearer <对仓库有写权限的 PAT>" \
   -H "Accept: application/vnd.github+json" \
   https://api.github.com/repos/{{REPO_SLUG}}/dispatches \
   -d '{"event_type":"update-rules"}'

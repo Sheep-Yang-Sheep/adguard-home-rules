@@ -154,6 +154,35 @@ export function contentSignature(text) {
   return text.replace(/^! 本合集更新时间（北京时间 UTC\+8）:.*$/m, '! 本合集更新时间: <ts>');
 }
 
+/**
+ * 产物自检：确认要写进 dist 的每一行都是 AdGuard Home 认得的规则。
+ *
+ * 规则主体是本仓库自己生成的（`||domain^` / `@@||domain^`，最多再带一个 `$important`），
+ * 其余原样透传的通配 / 特殊规则必须来自上游的白名单集合。这是最后一道闸门：
+ * 渲染逻辑将来若被改坏（例如把带非法字符的域名拼进去），任务会直接失败，
+ * 而不是把一份 AdGuard Home 拒绝加载的文件推给所有订阅者。
+ *
+ * @param {string} text renderRules 的输出
+ * @param {string[]} rawRules 允许原样出现的通配 / 特殊规则
+ * @returns {{bad:string[]}} 不合规的行（最多 10 条，够定位问题）
+ */
+export function verifyRenderedRules(text, rawRules = []) {
+  const allowedRaw = new Set(rawRules);
+  // 生成规则只可能是这四种形态：||d^、||d^$important、@@||d^、@@||d^$important
+  const GENERATED_RE = /^(?:@@)?\|\|[a-z0-9_-]+(?:\.[a-z0-9_-]+)+\^(?:\$important)?$/;
+  const bad = [];
+
+  for (const raw of String(text).split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('!')) continue;
+    if (GENERATED_RE.test(line) || allowedRaw.has(line)) continue;
+    bad.push(line);
+    if (bad.length >= 10) break;
+  }
+
+  return { bad };
+}
+
 /** 渲染 README */
 export function renderReadme(result, ctx) {
   const { stats, sources } = result;

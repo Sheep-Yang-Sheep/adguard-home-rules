@@ -18,6 +18,11 @@ const HOSTS_MULTI_RE = /^(?:0\.0\.0\.0|127\.0\.0\.1|::1?|::)\s+(\S+(?:\s+\S+)+)\
 // 单条 label 允许字母数字、下划线、连字符；整体至少两级
 const DOMAIN_RE = /^(?!-)[a-z0-9_-]{1,63}(?:\.(?!-)[a-z0-9_-]{1,63})+$/;
 
+// hosts 行 / 网络规则行的开头。这类行里的 `#` 只可能是行尾注释，
+// 不可能是元素隐藏规则的分隔符（元素隐藏规则从不以 `0.0.0.0` 或 `||` 开头）
+const HOSTS_PREFIX_RE = /^(?:0\.0\.0\.0|127\.0\.0\.1|::1?|::)\s/;
+const NETWORK_PREFIX_RE = /^(?:\|\||@@)/;
+
 // AdGuard Home 在 DNS 层能够真正生效的修饰符
 const DNS_SAFE_MODIFIERS = new Set(['important']);
 // 这些修饰符必须连同原规则整体保留，不能只留域名
@@ -155,8 +160,15 @@ export function parseLine(input) {
   }
 
   if (line.startsWith('#')) return { kind: 'skip', reason: 'comment' };
-  // ABP 元素隐藏规则对 DNS 过滤无效
-  if (line.includes('##') || line.includes('#@#') || line.includes('#?#') || line.includes('#$#')) {
+  // ABP 元素隐藏规则对 DNS 过滤无效。
+  // 但 hosts 行与 `||domain^` 行里的 `#` / `##` 只是行尾注释 —— 以前这里不区分，
+  // 一条 `0.0.0.0 ads.example.com ## 广告` 会被整条当成元素隐藏规则丢掉，
+  // 明明是有效的屏蔽规则却静默消失。因此先判掉网络规则 / hosts 行，只对它们走注释截断。
+  const networkish = NETWORK_PREFIX_RE.test(line) || HOSTS_PREFIX_RE.test(line);
+  if (
+    !networkish &&
+    (line.includes('##') || line.includes('#@#') || line.includes('#?#') || line.includes('#$#'))
+  ) {
     return { kind: 'skip', reason: 'element-hide' };
   }
 

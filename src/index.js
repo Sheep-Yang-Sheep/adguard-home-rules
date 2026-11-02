@@ -14,22 +14,32 @@ import {
   renderReadme,
   renderStatus,
   contentSignature,
+  verifyRenderedRules,
 } from './render.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
 const argv = process.argv.slice(2);
-const offlineDir = (() => {
-  const hit = argv.find((a) => a.startsWith('--offline'));
+
+/**
+ * 解析 `--xxx=DIR` / `--xxx DIR` 形式的目录参数
+ * @returns {string|null} 绝对路径，未指定时返回 null
+ */
+function dirArg(name) {
+  const hit = argv.find((a) => a.startsWith(`--${name}`));
   if (!hit) return null;
   const [, val] = hit.split('=');
   if (val) return path.resolve(ROOT, val);
   const i = argv.indexOf(hit);
   const next = argv[i + 1];
-  // `--offline` 后面若跟的是另一个开关，说明忘了给目录，按未启用离线处理
+  // `--offline` 后面若跟的是另一个开关，说明忘了给目录，按未启用处理
   return next && !next.startsWith('--') ? path.resolve(ROOT, next) : null;
-})();
+}
+
+const offlineDir = dirArg('offline');
+// 把本轮抓到的原文落盘；配合 --offline 就能断网复盘上一次的结果
+const cacheDir = dirArg('cache');
 const dryRun = argv.includes('--dry-run');
 
 const n = (v) => Number(v).toLocaleString('en-US');
@@ -52,7 +62,7 @@ async function loadSource(src, config, deadline) {
   if (offlineDir) {
     const file = path.join(offlineDir, `${src.id}.txt`);
     if (!existsSync(file)) {
-      return { src, ok: false, error: `离线模式缺少文件 ${file}` };
+      return { src, ok: false, error: `离线模式缺少文件 ${file}（先用 --cache=${path.basename(offlineDir)} 抓一次）` };
     }
     return { src, ok: true, text: readFileSync(file, 'utf8'), via: 'offline' };
   }
@@ -72,6 +82,15 @@ async function loadSource(src, config, deadline) {
       deadline: sourceDeadline,
       budgetScope,
     });
+    if (cacheDir) {
+      // 缓存失败不能影响本轮合并：抓到就是赚到，写不进去只是下次不能离线复盘
+      try {
+        mkdirSync(cacheDir, { recursive: true });
+        writeFileSync(path.join(cacheDir, `${src.id}.txt`), text, 'utf8');
+      } catch (err) {
+        log(`  [WARN] 缓存写入失败 ${src.id}: ${err.message}`);
+      }
+    }
     return { src, ok: true, text, via };
   } catch (err) {
     return { src, ok: false, error: err.message };
@@ -242,6 +261,14 @@ async function main() {
     homepage: repo.homepage,
     failedSources: failed,
   });
+
+  // 发布前自检：宁可本轮失败，也不要把 AdGuard Home 加载不了的文件推给订阅者
+  const { bad } = verifyRenderedRules(newRules, result.raw);
+  if (bad.length) {
+    log('[ABORT] 产物自检未通过，以下行不是合法规则：');
+    for (const line of bad) log(`        ${line}`);
+    process.exit(1);
+  }
 
   const contentChanged = contentSignature(oldRules) !== contentSignature(newRules);
 

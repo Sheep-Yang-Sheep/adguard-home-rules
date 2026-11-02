@@ -12,11 +12,15 @@
 
 {{LINKS}}
 
-推荐填这一条（ghfast.top 加速，国内实测可用）：
+推荐填这一条（ghfast.top 加速）：
 
 ```
 {{PRIMARY_URL}}
 ```
+
+> 加速通道的可用性随网络环境变化，同一时间不同运营商的结果可能不同。若这条打不开，
+> 把前缀换成 `https://gh-proxy.com/`、`https://ghproxy.net/` 或
+> `https://fastly.jsdelivr.net/gh/<owner>/<repo>@main/<文件路径>` 任选其一即可，后面的路径不用改。
 
 ### 在 AdGuard Home 中添加
 
@@ -88,6 +92,7 @@
    - 带 `$important` 的规则不参与剔除（它优先级高于 `@@`，删掉会改变实际拦截行为）
    - `co.uk`、`com.cn`、`github.io` 这类 **共享后缀**不充当收敛父域：一条 `||co.uk^` 就能把几万条子域规则一次删光，拦截效果虽然不变，但规则数会瞬间塌陷、误触发 20% 熔断导致整轮停更
 5. **输出**：按字母序排序后写出，保证同样内容生成同样的文件，`git diff` 只反映真实变化。
+   - 写文件之前先做一次全量自检：35 万条输出行必须逐条都是 AdGuard Home 认得的规则，任何一行不合规就整轮失败、不写文件，宁可不更新也不推一份加载不了的黑名单
 
 ---
 
@@ -141,11 +146,16 @@ curl -X POST \
 ## 七、本地运行
 
 ```bash
-# 需要 Node.js >= 20
-node src/index.js            # 在线抓取并合并
-node src/index.js --dry-run  # 只跑不写文件
-npm test                     # 单元测试
+# 需要 Node.js >= 20，无第三方依赖，不需要 npm install
+npm test                                  # 单元测试
+node src/index.js                         # 在线抓取并合并（会写 dist / README / status）
+node src/index.js --dry-run               # 只跑不写文件
+npm run cache                             # 抓一次并把各源原文存到 .cache/（不写 dist）
+npm run build:offline                     # 断网复盘：只用 .cache/ 里的原文重新生成
 ```
+
+`--cache=DIR` 保存的是**本轮实际拿到的原文**（可能来自镜像），因此离线复盘出来的结果
+与在线运行逐字节一致，适合排查「同样的输入为什么输出变了」。
 
 ---
 

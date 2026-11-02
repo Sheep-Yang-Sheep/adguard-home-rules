@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { parseLine, parseList, normalizeDomain } from './parser.js';
 import { subsumeByParent, mergeSources, findAllowShadowed } from './merger.js';
-import { beijingNow, renderRules } from './render.js';
+import { beijingNow, renderRules, verifyRenderedRules } from './render.js';
 import { buildCandidates, looksLikeRuleList } from './network.js';
 
 test('标准屏蔽规则', () => {
@@ -546,4 +546,68 @@ test('抓取预算耗尽时能区分单源预算与全局预算', async () => {
     () => fetchText('https://adrules.top/dns.txt', { deadline: Date.now() - 1 }),
     /已超全局抓取预算/
   );
+});
+
+// ---------- 回归：注释里的 ## 不再吞掉有效规则 ----------
+
+test('hosts 行尾的 ## 注释不会把整条规则判成元素隐藏', () => {
+  // 元素隐藏规则从不以 0.0.0.0 / || 开头，因此这类行里的 # 只能是注释
+  const r = parseLine('0.0.0.0 ads.example.com ## 广告域名');
+  assert.equal(r.kind, 'block');
+  assert.equal(r.domain, 'ads.example.com');
+
+  const n = parseLine('||a.com^##注释');
+  assert.equal(n.kind, 'block');
+  assert.equal(n.domain, 'a.com');
+
+  const p = parseLine('127.0.0.1 b.example.net#备注');
+  assert.equal(p.domain, 'b.example.net');
+});
+
+test('真正的元素隐藏规则仍然被丢弃', () => {
+  assert.equal(parseLine('example.com##.ad-banner').reason, 'element-hide');
+  assert.equal(parseLine('example.com#@#.ad-banner').reason, 'element-hide');
+  assert.equal(parseLine('example.com#?#div:has(.ad)').reason, 'element-hide');
+});
+
+// ---------- 产物自检 ----------
+
+test('产物自检能放过合法规则、拦住非法行', () => {
+  const ok = renderRules(
+    {
+      block: [
+        { domain: 'a.com', important: false },
+        { domain: 'b.com', important: true },
+      ],
+      allow: [{ domain: 'safe.example.com', important: false }],
+      raw: ['||*-ad-sign.byteimg.com^'],
+      sources: [],
+      stats: {
+        before: 3,
+        after: 4,
+        blockUnique: 2,
+        allowUnique: 1,
+        rawUnique: 1,
+        subsumeRemoved: 0,
+        rawCovered: 0,
+        sharedSuffixKept: 0,
+        allowShadowed: 0,
+        conflicts: 0,
+        importantOverAllow: 0,
+        deadRules: 0,
+        badfilterKept: 0,
+        skipped: {},
+        skippedTotal: 0,
+        upstreams: 1,
+      },
+    },
+    { updatedAt: beijingNow(), homepage: 'h' }
+  );
+  assert.deepEqual(verifyRenderedRules(ok, ['||*-ad-sign.byteimg.com^']).bad, []);
+
+  // 域名里混进非法字符（渲染层被改坏的典型后果）必须被拦住
+  const broken = `${ok}\n||bad domain.com^\n`;
+  const { bad } = verifyRenderedRules(broken, ['||*-ad-sign.byteimg.com^']);
+  assert.equal(bad.length, 1);
+  assert.equal(bad[0], '||bad domain.com^');
 });

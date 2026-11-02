@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node src/index.js",
+    "cache": "node src/index.js --dry-run --cache=.cache",
     "build:offline": "node src/index.js --offline=.cache",
     "test": "node --test src/test.js"
   }

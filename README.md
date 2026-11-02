@@ -37,12 +37,12 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-02 12:12` 周一
-- **上次自动任务运行时间（北京时间）**：`2026-11-02 12:12`
+- **本合集更新时间（北京时间）**：`2026-11-02 13:50` 周一
+- **上次自动任务运行时间（北京时间）**：`2026-11-02 13:50`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 822,264 |
+| 合并前规则数（各上游合计，含重复） | 822,262 |
 | 去重后规则数 | 365,241 |
 | 被父域规则覆盖而移除的冗余规则 | 13,586 |
 | **合并后规则数** | **351,655** |
@@ -73,7 +73,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,739 |
 | 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,225 |
 | 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,438 |
-| 8 | OISD Small | https://small.oisd.nl/ | 59,470 |
+| 8 | OISD Small | https://small.oisd.nl/ | 59,468 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 

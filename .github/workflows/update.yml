@@ -125,6 +125,9 @@ jobs:
           fi
 
       - name: 提交变更
+        env:
+          # 只有定时任务才需要节流；手工触发 / push / dispatch 一律照常提交
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -149,7 +152,10 @@ jobs:
             KIND=heartbeat
           fi
 
-          if [ "$KIND" = "heartbeat" ] && [ "$AGE" -lt 7200 ]; then
+          # 只对「定时任务 + 规则没变 + 距上次提交不足 2 小时」这一种组合节流。
+          # 以前没判断触发方式，结果改完 README 模板推上来，这一次运行因为 dist 没变
+          # 被当成心跳跳过，改动白跑（run #16 就是这么丢的）。
+          if [ "$KIND" = "heartbeat" ] && [ "$AGE" -lt 7200 ] && [ "$EVENT" = "schedule" ]; then
             echo "规则未变，且距上次提交只有 $((AGE / 60)) 分钟（< 120），跳过心跳提交"
             exit 0
           fi

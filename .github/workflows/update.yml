@@ -25,13 +25,15 @@ on:
         type: boolean
         default: false
   # 外部定时器兜底：GitHub 自己的 cron 丢单时，这是唯一能让更新准点的办法。
-  # 用一个对仓库有 Actions 写权限的 PAT 打这个接口即可：
+  # 实测本仓库 32 小时内应触发约 30 次、实际只跑了 2 次（~7%），所以这条路径不是可选项。
+  # 现成的实现放在 ops/cron-trigger（Cloudflare Worker + Cron Trigger），照 README 部署即可。
+  # 手工调用则是：（需要 Contents: Read and write，classic 令牌勾 repo 即可）
   #   curl -X POST \
-  #     -H "Authorization: Bearer <PAT>" \
+  #     -H "Authorization: Bearer <token>" \
   #     -H "Accept: application/vnd.github+json" \
   #     https://api.github.com/repos/<owner>/<repo>/dispatches \
-  #     -d '{"event_type":"update-rules"}'
-  # 详见 README「六、常见问题 · 更新时间为什么不准」。
+  #     -d '{"event_type":"update-rules","client_payload":{"force":"false"}}'
+  # 详见 README「六、常见问题 · 说好每 4 小时更新」。
   repository_dispatch:
     types: [update-rules]
   # 修改配置或代码后立即跑一次验证
@@ -97,7 +99,10 @@ jobs:
       - name: 校验输出
         env:
           PREV_BLOCK: ${{ steps.baseline.outputs.block }}
-          FORCE: ${{ github.event.inputs.force || 'false' }}
+          # 手工触发走 workflow_dispatch 的 inputs.force，
+          # 外部定时器（ops/cron-trigger）走 repository_dispatch 的 client_payload.force。
+          # 两条路径都能兜底「20% 熔断」，不必登录网页点按钮。
+          FORCE: ${{ github.event.inputs.force || github.event.client_payload.force || 'false' }}
         run: |
           set -euo pipefail
           FILE=dist/adguard-home-rules.txt

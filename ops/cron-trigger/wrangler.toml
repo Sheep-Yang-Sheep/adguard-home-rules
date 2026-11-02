@@ -1,0 +1,18 @@
+name = "adguard-rules-cron"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+# 每小时唤醒一次。是否真的派发由 worker 自己判断：
+# 只有仓库超过 STALE_HOURS 没提交才会打 repository_dispatch，
+# 因此不会和 GitHub 自己的 schedule 重复触发。
+[triggers]
+crons = ["7 * * * *"]
+
+[vars]
+REPO = "Sheep-Yang-Sheep/adguard-home-rules"
+EVENT_TYPE = "update-rules"
+STALE_HOURS = "3"
+
+# GITHUB_TOKEN / TRIGGER_SECRET 用 secret 注入，不要写在这里：
+#   wrangler secret put GITHUB_TOKEN
+#   wrangler secret put TRIGGER_SECRET

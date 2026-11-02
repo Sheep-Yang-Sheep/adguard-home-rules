@@ -41,16 +41,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-02 22:39` 周一
-- **上次自动任务运行时间（北京时间）**：`2026-11-02 22:39`
+- **本合集更新时间（北京时间）**：`2026-11-02 22:34` 周一
+- **上次自动任务运行时间（北京时间）**：`2026-11-02 22:57`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 822,472 |
-| 去重后规则数 | 365,337 |
-| 被父域规则覆盖而移除的冗余规则 | 13,585 |
-| **合并后规则数** | **351,752** |
-| └ 屏蔽规则 | 351,102 |
+| 合并前规则数（各上游合计，含重复） | 822,433 |
+| 去重后规则数 | 365,412 |
+| 被父域规则覆盖而移除的冗余规则 | 13,586 |
+| **合并后规则数** | **351,826** |
+| └ 屏蔽规则 | 351,176 |
 | └ 白名单例外 `@@` | 243 |
 | └ 通配 / 特殊规则 | 407 |
 | 被白名单架空的屏蔽规则（不生效） | 4 |
@@ -74,9 +74,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 2 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
 | 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,610 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
-| 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,778 |
+| 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,739 |
 | 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,225 |
-| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,610 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 206,438 |
 | 8 | OISD Small | https://small.oisd.nl/ | 59,467 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
@@ -139,19 +139,29 @@ jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 gh
 这是熔断保护：上游规则突然少了两成以上时宁可不发，避免把残缺规则推给软路由。若确认是上游**合法瘦身**（或某个大源永久下线导致总量下降），到 Actions 页面手动 **Run workflow** 并勾选 `force`，跑一次即可把基线重置到新水位，之后定时任务恢复正常。
 
 **Q：说好每 4 小时更新，为什么「上次任务运行时间」停了好几个小时？**
-大概率不是你这边的问题，而是 GitHub 的定时任务丢了。`schedule` 只是 best-effort：高峰期会延迟，负载高时还会**整次丢弃**——连一条失败的运行记录都不会留下。本仓库建仓头 20 小时里有 5 个定时点，只跑起来 1 次，其余 4 次在 Actions 里查无此事。
+不是你这边的问题，是 GitHub 的定时任务丢了。`schedule` 只是 best-effort：高峰期会延迟，负载高时还会**整次丢弃**——连一条失败的运行记录都不会留下。
 
-本仓库的应对是把定时拆成两条互补的 cron：主 cron 每 4 小时一次（`:07`），补跑 cron 在奇数小时各来一次（`:23`）。两条交错后实际是 18 次/天，最长间隔 2 小时。补跑之所以摊到不同小时而不是挤在同一小时，是因为实测丢弃是「成簇」的——连续丢 4 次才成功 1 次，同一小时的两次尝试大概率一起丢。规则没变时补跑不会多刷提交。
+本仓库的实测数据（2026-11-01 07:02 → 2026-11-02 14:40，约 32 小时）：
 
-如果你对时效要求高，可以再叠一层外部定时器（cron-job.org、自己的 VPS 都行），每 4 小时打一次接口触发，这条路径不经过 GitHub 的调度器，最可靠：
+| 按 cron 应触发 | 实际触发 | 触达率 |
+| --- | --- | --- |
+| 约 30 次 | 2 次 | **~7%** |
+
+工作流本身没问题（状态 `active`、每次运行都是 success），丢的是**调度**。所谓「两条交错 cron = 18 次/天」在纸面上成立，实际兑现不了。
+
+**能真正解决的办法只有换触发源**：把任务交给不经过 GitHub 调度器的定时器。本仓库已经放好现成实现——[`ops/cron-trigger`](ops/cron-trigger/README.md)，Cloudflare Worker + Cron Trigger，每小时检查一次，仓库超过 3 小时没提交就自动 dispatch 一次，免费额度内、不用服务器。照着那个 README 走三步（建 fine-grained token → `wrangler deploy` → 验证）就能做到真正的每 4 小时。
+
+不想上 Cloudflare 的话，任何能发 HTTP 请求的定时服务都等价，打这一条就行（需要 Contents: Read and write 权限，classic 令牌勾 `repo`）：
 
 ```bash
 curl -X POST \
-  -H "Authorization: Bearer <对仓库有写权限的 PAT（classic 令牌勾 repo 即可）>" \
+  -H "Authorization: Bearer <token>" \
   -H "Accept: application/vnd.github+json" \
   https://api.github.com/repos/Sheep-Yang-Sheep/adguard-home-rules/dispatches \
-  -d '{"event_type":"update-rules"}'
+  -d '{"event_type":"update-rules","client_payload":{"force":"false"}}'
 ```
+
+`cron-job.org`（网页点点就行）、自己的 VPS / NAS 都可以，注意设备要能直连 `api.github.com`。
 
 **Q：想增删订阅源？**
 编辑 `sources.json` 的 `sources` 数组，提交后会自动触发一次合并。同一份内容的多个入口可以并存，用 `upstream` 字段标记为同一个上游即可（互为备份、不重复计数）。

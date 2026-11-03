@@ -4,8 +4,13 @@
  * 职责：
  *   1. 跨源去重（域名级）
  *   2. 父子域收敛：父域已被屏蔽时，其子域的独立屏蔽规则属于冗余，直接剔除
- *   3. 白名单例外 @@ 只做去重，永不收敛
- *   4. 体检报告：白名单架空了多少屏蔽规则、同域冲突、被丢弃的行——全部量化输出
+ *   3. 白名单例外 @@ 只做去重、永不收敛，但**与黑名单重叠时整条失效**（黑名单优先）
+ *   4. 体检报告：多少白名单因黑名单优先而失效、同域冲突、被丢弃的行——全部量化输出
+ *
+ * 关于第 3 点：AdGuard Home 原生语义里 `@@` 例外是压过普通屏蔽规则的，多源合并后
+ * 一条上游的白名单会把其它所有上游对同一域名（含子域）的拦截一起取消。本项目选择
+ * 「黑名单优先」：只要一条白名单规则的范围与黑名单有交集（同域 / 它被黑名单父域覆盖 /
+ * 它自己覆盖了黑名单里的子域），这条例外就整条剔除，屏蔽规则照常生效。
  */
 
 /**
@@ -15,8 +20,8 @@
  * 以及 `github.io`、`netlify.app` 这类由无数陌生人共用的平台域名，都不满足这个前提。
  *
  * 一旦某个上游混进一条 `||co.uk^`，收敛会把名下几万条子域规则一次性删光。拦截效果其实
- * 没变（父域规则本来就覆盖全部子域），但规则数会瞬间塌陷，直接触发工作流「比上轮少 20%
- * 就拒绝发布」的熔断，导致整轮失败、订阅停更 —— 一条脏数据放大成全局故障。
+ * 没变（父域规则本来就覆盖全部子域），但规则数会瞬间塌陷，把真实变化淹没在噪音里，
+ * 排查「这轮为什么少了十万条」的成本极高 —— 一条脏数据放大成全局困惑。
  *
  * 所以这类域名只正常参与屏蔽，不充当收敛的父域。
  */
@@ -125,6 +130,71 @@ export function findAllowShadowed(blockDomains, allowSet, sampleSize = 5) {
 }
 
 /**
+ * 黑名单优先：只要白名单规则与黑名单有交集，这条例外就整条失效。
+ *
+ * 判定三种「交集」，任一命中即剔除该白名单：
+ *   same-domain    白名单域名本身就在黑名单里（`||a.com^` + `@@||a.com^`）
+ *   under-block    白名单域名位于被屏蔽的父域之下（`||a.com^` + `@@||x.a.com^`）
+ *   shadows-block  白名单覆盖了黑名单里的子域（`@@||a.com^` + `||ads.a.com^`）
+ *
+ * 为什么要连 under-block 也剔除：`||a.com^` 屏蔽的是 a.com 及其全部子域，`@@||x.a.com^`
+ * 会把它解开 —— 这正是「白名单压过黑名单」。要贯彻黑名单优先，这类例外必须一起去掉。
+ *
+ * 注意剔除白名单**不会**凭空增加拦截：例外本身不屏蔽任何东西，剔除后只是让原本被它
+ * 解开的屏蔽规则重新生效。a.com 自身若没有屏蔽规则，仍然照常访问。
+ *
+ * @param {string[]} blockDomains 收敛后的黑名单域名
+ * @param {string[]} allowDomains 去重后的白名单域名
+ * @returns {{dropped:Array<{domain:string, reason:string}>, byReason:Record<string,number>, sample:Array<{domain:string, reason:string}>}}
+ */
+export function pruneBlockedAllows(blockDomains, allowDomains) {
+  const blockSet = new Set(blockDomains);
+  const allowSet = new Set(allowDomains);
+  /** @type {Map<string,string>} domain -> reason（先命中的原因优先保留） */
+  const hit = new Map();
+  const mark = (domain, reason) => {
+    if (!hit.has(domain)) hit.set(domain, reason);
+  };
+
+  // 1) 同域冲突
+  for (const d of allowDomains) {
+    if (blockSet.has(d)) mark(d, 'same-domain');
+  }
+
+  // 2) 白名单落在被屏蔽的父域之下
+  for (const d of allowDomains) {
+    let idx = d.indexOf('.');
+    while (idx !== -1) {
+      if (blockSet.has(d.slice(idx + 1))) {
+        mark(d, 'under-block');
+        break;
+      }
+      idx = d.indexOf('.', idx + 1);
+    }
+  }
+
+  // 3) 白名单把黑名单里的子域解开了：反向查一遍，比逐个白名单找子域便宜得多
+  //    （黑名单 35 万条 × 平均 3 个标签，白名单只有几百条）
+  for (const d of blockDomains) {
+    let idx = d.indexOf('.');
+    while (idx !== -1) {
+      const parent = d.slice(idx + 1);
+      if (allowSet.has(parent)) mark(parent, 'shadows-block');
+      idx = d.indexOf('.', idx + 1);
+    }
+  }
+
+  const dropped = [...hit.entries()]
+    .map(([domain, reason]) => ({ domain, reason }))
+    .sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
+
+  const byReason = { 'same-domain': 0, 'under-block': 0, 'shadows-block': 0 };
+  for (const item of dropped) byReason[item.reason] += 1;
+
+  return { dropped, byReason, sample: dropped.slice(0, 5) };
+}
+
+/**
  * 收集被 `$badfilter` 点名取消的域名
  *
  * `||ads.a.com^$badfilter` 的语义是「不要屏蔽 ads.a.com」。若 `||ads.a.com^` 因父域
@@ -220,15 +290,32 @@ export function mergeSources(sources) {
 
   // 排序保证同内容生成同结果，避免无谓的 diff
   finalBlock.sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
+  const blockedSet = new Set(finalBlock.map((b) => b.domain));
 
-  const finalAllow = [...allowMap.entries()]
+  // 黑名单优先：与黑名单有任何交集的白名单整条剔除。
+  // 必须在父子域收敛之后再判，否则会被「已被收敛掉的屏蔽规则」误伤。
+  const allowCandidates = [...allowMap.entries()]
     .map(([domain, meta]) => ({ domain, important: meta.important }))
     .sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
+  const allowPrune = pruneBlockedAllows(
+    finalBlock.map((b) => b.domain),
+    allowCandidates.map((a) => a.domain)
+  );
+  const droppedAllowSet = new Set(allowPrune.dropped.map((d) => d.domain));
+  const finalAllow = allowCandidates.filter((a) => !droppedAllowSet.has(a.domain));
+
+  // 这些屏蔽规则原本被白名单架空，剔除白名单后重新生效 —— 量化出来才能看到策略的收益
+  const shadowRestored = droppedAllowSet.size
+    ? findAllowShadowed(
+        finalBlock.map((b) => b.domain),
+        droppedAllowSet
+      ).count
+    : 0;
+
   const sortedRaw = [...rawMap.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   // 通配类规则（如 `||*-sdk.rum.aliyuncs.com^`）若其尾部父域已被屏蔽，
   // 匹配目标必然是父域的子域，同样属于冗余，可安全剔除
-  const blockedSet = new Set(finalBlock.map((b) => b.domain));
   const finalRaw = [];
   let rawCovered = 0;
   for (const rule of sortedRaw) {
@@ -236,17 +323,17 @@ export function mergeSources(sources) {
     else finalRaw.push(rule);
   }
 
-  // 同一域名既屏蔽又放行，AdGuard Home 以 @@ 为准（除非屏蔽带了 $important）
-  // 注意：必须用收敛后的 finalBlock 判断，否则把已经被父域收敛掉的屏蔽规则也算成冲突
-  const finalBlockSet = new Set(finalBlock.map((b) => b.domain));
+  // 剔除之后理论上不该再有「同域既屏蔽又放行」，这里仍算一遍：一旦不为 0
+  // 说明 pruneBlockedAllows 有漏判，可以直接从统计里看出来
   const allowDomains = finalAllow.map((a) => a.domain);
   const importantSet = new Set(finalBlock.filter((b) => b.important).map((b) => b.domain));
-  const conflicts = allowDomains.filter((d) => finalBlockSet.has(d));
+  const conflicts = allowDomains.filter((d) => blockedSet.has(d));
   const importantOverAllow = conflicts.filter((d) => importantSet.has(d));
 
   const shadowed = findAllowShadowed(finalBlock.map((b) => b.domain), new Set(allowDomains));
 
-  // 文件里存在但实际不会拦截的规则总数：白名单架空 + 同域被 @@ 压过
+  // 文件里存在但实际不会拦截的规则总数：白名单架空 + 同域被 @@ 压过。
+  // 黑名单优先生效后这两项都应归零，留着是为了「一旦不为 0 立刻能看见」
   const deadRules = shadowed.count + conflicts.length - importantOverAllow.length;
 
   const after = finalBlock.length + finalAllow.length + finalRaw.length;
@@ -282,9 +369,16 @@ export function mergeSources(sources) {
       rawCovered,
       // 命中共享后缀保护、因而没被父域吞掉的子域规则条数
       sharedSuffixKept: protectedHits,
+      // 黑名单优先：因与黑名单交集而整条剔除的白名单
+      allowDropped: allowPrune.dropped.length,
+      allowDroppedSample: allowPrune.sample,
+      allowDroppedByReason: allowPrune.byReason,
+      // 剔除白名单后重新生效的屏蔽规则条数
+      shadowRestored,
       allowShadowed: shadowed.count,
       allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,
+      conflictsResolved: allowPrune.byReason['same-domain'],
       importantOverAllow: importantOverAllow.length,
       deadRules,
       badfilterKept: pinnedDomains.filter((d) => keepForBadfilter.has(d) && !blockMap.get(d)?.important).length,

@@ -17,11 +17,12 @@ on:
     - cron: '7 */4 * * *'
     - cron: '23 1-23/2 * * *'
   # 支持手动触发：仓库 Actions 页面 → 自动合并规则 → Run workflow
-  # force=true 可跳过「比上轮少 20% 就拒绝发布」的熔断，用于上游合法瘦身后解卡
+  # force=true 只用于救急：某个源已确认永久下线、但还没从 sources.json 里删掉时，
+  # 临时允许「缺源也发布」。正常运行不需要它。
   workflow_dispatch:
     inputs:
       force:
-        description: '跳过 20% 跌幅熔断，强制发布本次结果'
+        description: '忽略上游抓取失败（缺源也发布，救急用）'
         type: boolean
         default: false
   # 外部定时器兜底：GitHub 自己的 cron 丢单时，这是唯一能让更新准点的办法。
@@ -71,66 +72,34 @@ jobs:
       - name: 单元测试
         run: node --test src/test.js
 
-      - name: 记录上轮基线
-        id: baseline
-        run: |
-          PREV=0
-          if [ -f status.json ]; then
-            # status.json 万一被冲突残留写坏（比如 rebase 剩下的半截 JSON），
-            # 这里不能直接抛异常 —— 否则整个 job 在抓取之前就失败，永远自愈不了
-            PREV=$(node -e "
-              try {
-                const b = JSON.parse(require('fs').readFileSync('status.json','utf8')).block;
-                process.stdout.write(String(typeof b === 'number' ? b : 0));
-              } catch {
-                process.stdout.write('0');
-              }
-            ")
-          fi
-          echo "block=$PREV" >> "$GITHUB_OUTPUT"
-          echo "上轮屏蔽规则基线: $PREV 条"
-
       - name: 抓取并合并规则
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.event.repository.default_branch }}
+          # 发布闸门在 src/index.js 里：配置中任何一个上游完全没有可用地址，
+          # 整个过程直接失败、一个文件都不写（宁可停更，也不发布残缺规则）。
+          # 手工触发走 workflow_dispatch 的 inputs.force，
+          # 外部定时器（ops/cron-trigger）走 repository_dispatch 的 client_payload.force。
+          FORCE: ${{ github.event.inputs.force || github.event.client_payload.force || 'false' }}
         run: node src/index.js
 
       - name: 校验输出
-        env:
-          PREV_BLOCK: ${{ steps.baseline.outputs.block }}
-          # 手工触发走 workflow_dispatch 的 inputs.force，
-          # 外部定时器（ops/cron-trigger）走 repository_dispatch 的 client_payload.force。
-          # 两条路径都能兜底「20% 熔断」，不必登录网页点按钮。
-          FORCE: ${{ github.event.inputs.force || github.event.client_payload.force || 'false' }}
         run: |
           set -euo pipefail
           FILE=dist/adguard-home-rules.txt
           test -f "$FILE" || { echo "::error::规则文件未生成"; exit 1; }
 
           SIZE=$(stat -c%s "$FILE")
-          # 只统计纯域名屏蔽规则，与 status.json 的 block 口径一致；
-          # 以前用 '^||' 会把 400 多条通配规则也算进来，和基线不是同一个数
+          # 只统计纯域名屏蔽规则，与 status.json 的 block 口径一致
           LINES=$(grep -cE '^\|\|[^$*]+\^$' "$FILE" || true)
-          echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条 / 上轮: ${PREV_BLOCK:-0} 条"
+          echo "文件大小: $SIZE 字节 / 屏蔽规则: $LINES 条"
 
+          # 只保留「文件根本不像一份规则」的兜底判断。
+          # 原先的「比上轮少 20% 就拒绝发布」已移除：增删单个规则源、或上游合法瘦身
+          # 都会让总数发生正常变化，那种熔断会让订阅长期停更，而且要靠人工 force 才能解卡。
           if [ "$SIZE" -lt 1000000 ]; then
             echo "::error::规则文件异常偏小（$SIZE 字节），疑似抓取失败"
             exit 1
-          fi
-
-          # 相对上轮掉 20% 以上就拒绝发布：宁可这次不更新，也不要推一份残缺规则
-          if [ "${PREV_BLOCK:-0}" -gt 100000 ]; then
-            MIN=$(( PREV_BLOCK * 80 / 100 ))
-            if [ "$LINES" -lt "$MIN" ]; then
-              if [ "$FORCE" = "true" ]; then
-                echo "::warning::屏蔽规则数 $LINES 条，低于上轮 $PREV_BLOCK 条的 80%，但已指定 force=true，继续发布"
-              else
-                echo "::error::屏蔽规则数 $LINES 条，比上轮 $PREV_BLOCK 条少 20% 以上，拒绝发布"
-                echo "::error::若确认是上游合法瘦身，请到 Actions 页面手动 Run workflow 并勾选 force"
-                exit 1
-              fi
-            fi
           fi
 
       - name: 提交变更

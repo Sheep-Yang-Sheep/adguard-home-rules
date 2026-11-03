@@ -1,5 +1,4 @@
 {
-  "minSuccessRatio": 0.75,
   "minSourceRetention": 0.5,
   "concurrency": 8,
   "timeoutMs": 45000,

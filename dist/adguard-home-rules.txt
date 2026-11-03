@@ -3,7 +3,7 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-03 10:57
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-03 12:07
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
@@ -14,16 +14,16 @@
 !   其中通配/特殊规则去重后: 479
 ! 被父域规则覆盖而移除的冗余规则: 13,618
 !   其中子域规则: 13,546 · 通配规则: 72
-! 合并后规则数: 351,987
+! 合并后规则数: 351,871
 !   其中屏蔽规则: 351,337
-!   其中白名单例外: 243
+!   其中白名单例外: 127
 !   其中通配/特殊规则: 407
+! 白名单例外去重后共 243 条，其中 116 条因与黑名单冲突被执行「黑名单优先」剔除
 !
 ! ================= 体检报告 =================
-! 被父域白名单 @@ 架空的屏蔽规则: 4（仍在文件中，但实际不会拦截）
-! 同域既屏蔽又放行（按 @@ 生效）: 29
-!   其中带 $important、会压过 @@ 的: 0
-! 实际不生效的屏蔽规则合计: 33（= 架空 + 同域放行 - $important 压制）
+! 【黑名单优先】因与黑名单交集而剔除的白名单 @@: 116（同域 29 · 位于被屏蔽父域下 85 · 解开了黑名单子域 2）
+! 因剔除白名单而重新生效的屏蔽规则: 4
+! 实际不生效的屏蔽规则合计: 0（应为 0；不为 0 说明白名单优先逻辑有漏判）
 ! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: 3
 ! 解析阶段丢弃 153 行: 注释 65 · 非法域名/IP 54 · 正则规则 27 · 无法识别 4 · 带路径的 URL 规则 3
 !
@@ -63,54 +63,32 @@
 !
 ! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。
 
-! ============ 白名单例外规则（@@ 优先级高于普通屏蔽规则）============
-@@||5471782.fls.doubleclick.net^
-@@||79423.analytics.edgekey.net^
-@@||a.sellpoint.net^
+! ============ 白名单例外规则（已剔除与黑名单冲突的条目）============
 @@||aax-fe.amazon.co.jp^
-@@||ac.ebis.ne.jp^
 @@||acs-m.daraz.com.bd^
 @@||acs-m.daraz.pk^
-@@||action.metaffiliation.com^
 @@||ad-block.dns.adguard.com^
 @@||ad-gone.com^
 @@||ad-putting.gw.zt-express.com^
 @@||ad.azure.com^
 @@||ad.cityu.edu.hk^
-@@||ad.jp^
 @@||ad.kazakinfo.com^
-@@||ad.ourgame.com^
 @@||ad.siemens.com.cn^
 @@||adblock.adguard.com^
-@@||admin.dable.io^
 @@||admin.mailchimp.com^
 @@||ads.finance^
-@@||ads.privacy.qq.com^
-@@||ads.taboola.com^
 @@||adv.bloop.info^
 @@||advert.kf5.com^
 @@||advertisement.taobao.com^
-@@||afi-b.com^
-@@||alllaw.112.2o7.net^
 @@||analysis.chess.com^
 @@||analysis.windows.net^
-@@||analytics.amplitude.com^
 @@||anwb.webpower.eu^
-@@||ap01.records.in.treasuredata.com^
-@@||api.ads.tvb.com^
-@@||api.docodoco.jp^
 @@||api.huangye.miui.com^
 @@||api.karte.io^
 @@||app-advertise.zhihuishu.com^
-@@||app.adjust.com^
-@@||app.appsflyer.com^
 @@||app.powerbi.com^
-@@||artifactory.appodeal.com^
-@@||autocomplete.clearbit.com^
-@@||awin1.com^
 @@||banner.dna.fi^
 @@||baozhang.baidu.com^
-@@||belgium.wolterskluwer.com^
 @@||c.office.com^
 @@||captcha.su.baidu.com^
 @@||catchup.thisisdax.com^
@@ -120,73 +98,37 @@
 @@||cdn.duurzaam.greenchoice.nl^
 @@||cdn.rozetka.com.ua^
 @@||center-h5api.m.taobao.com^
-@@||chart-embed.service.newrelic.com^
-@@||chaturbate.com^
 @@||cindyholbrook.lpages.co^
-@@||citiintl.122.2o7.net^
-@@||cj.dotomi.com^
-@@||cl.link-ag.net^
 @@||classliving.lpages.co^
-@@||click.appcast.io^
 @@||click.avs.io^
-@@||click.cptrack.de^
 @@||click.simba.taobao.com^
-@@||click.trafficguard.ai^
 @@||click.virt.exacttarget.com^
 @@||clickattr.wayup.com^
-@@||cm-beacon.nakanohito.jp^
-@@||cm-widget.nakanohito.jp^
-@@||cmp.inmobi.com^
-@@||cmp.osano.com^
-@@||content.ingbank.pl^
-@@||content.viralize.tv^
 @@||counter-strike.net^
 @@||crm-cdn.peek-cloppenburg.com^
-@@||cs.silverpop.com^
 @@||cutcaptcha.com^
-@@||daikoku.ebis.ne.jp^
-@@||data.digital.costco.ca^
-@@||data.digital.costco.com^
-@@||data.notify.macys.com^
-@@||data.orders.costco.ca^
-@@||data.orders.costco.com^
-@@||data.promo.timhortons.ca^
 @@||developers.google.com^
 @@||download.adguard.com^
 @@||dxcloud.episerver.net^
-@@||e.customeriomail.com^
 @@||edge-enterprise.activity.windows.com^
 @@||edge.activity.windows.com^
 @@||email.awscloud.com^
 @@||email.elitedangerous.com^
 @@||emails.educause.edu^
-@@||f-gear.ec-optimizer.com^
 @@||feed.adrelayer.com^
 @@||forum.notebookreview.com^
 @@||ftp.bmp.ovh^
-@@||future.biz.weibo.com^
-@@||gate.first-id.fr^
 @@||get.neofinancial.com^
-@@||go.adjust.com^
-@@||go.redirectingat.com^
 @@||go.scorptec.com.au^
 @@||goto.target.com^
 @@||goto.walmart.com^
 @@||grp07.ias.rakuten.co.jp^
-@@||gs.statcounter.com^
-@@||hb.afl.rakuten.co.jp^
 @@||health.halodoc.com^
 @@||hidive.com^
 @@||home.focusatwill.com^
 @@||href.li^
-@@||ia.hit.interia.pl^
-@@||id.i2i.jp^
-@@||img.ads.tvb.com^
-@@||infra-api.newrelic.com^
 @@||injections.adguard.org^
 @@||insideruser.microsoft.com^
-@@||intersport.peerius.com^
-@@||itoya.ec-optimizer.com^
 @@||js.monitor.azure.com^
 @@||learn.khanacademy.org^
 @@||link.meet5.net^
@@ -195,116 +137,58 @@
 @@||link.sylikes.com^
 @@||linka.page^
 @@||links.e.theatlantic.com^
-@@||links.getblueshift.com^
 @@||local.adguard.org^
-@@||log.mmstat.com^
-@@||logentries.com^
 @@||login.gaijin.net^
-@@||login.sendpulse.com^
-@@||ma135-r.analytics.edgekey.net^
 @@||manwa.me^
-@@||marketing.net.idealo-partner.com^
 @@||media-consumer365.desigual.com^
 @@||meizu.coapi.moji.com^
-@@||my.tealiumiq.com^
-@@||netatmo.commander1.com^
 @@||news-app.abumedia.yql.yahoo.com^
 @@||news.warhammer.com^
-@@||nineto5mac-d.openx.net^
-@@||oa.tr.line.me^
 @@||obituaries.startribune.com^
 @@||obituaries.therecord.com^
 @@||obituaries.thestar.com^
 @@||obituaries.toacorn.com^
 @@||official.paymaya.com^
-@@||om-ssl.consorsbank.de^
-@@||omniture.walmart.com^
-@@||omsc.kpn.com^
 @@||oneline.nextday.media^
 @@||onl.bz^
-@@||pagead.l.doubleclick.net^
 @@||partner.everydays.de^
 @@||partner.o2online.de^
-@@||passport.bobo.com^
-@@||pgpartner.com^
-@@||pics.porn300.com^
 @@||prod.impartner.live^
 @@||promo.gramedia.com^
-@@||proto2ad.durasite.net^
 @@||pt.afl.rakuten.co.jp^
-@@||public-cis.exponea.com^
-@@||puma.112.2o7.net^
-@@||puzzles-games-api.gp-prod.conde.digital^
-@@||px.a8.net^
-@@||radiofrance.targetspot.com^
-@@||rd.bizrate.com^
-@@||recommender.scarabresearch.com^
-@@||redir.ownpage.fr^
-@@||redirect.appmetrica.yandex.com^
 @@||redirect.disqus.com^
 @@||ref.rbauction.com^
 @@||refer.discover.com^
 @@||remembering.ca^
 @@||reports.adguard.com^
-@@||res.ads.nicovideo.jp^
-@@||s.bluecore.com^
-@@||s.mvconf.f.360.cn^
-@@||s.optnx.com^
 @@||s1.wp.com^
-@@||sax.sina.com.cn^
-@@||sbs.demdex.net^
-@@||sdkapi.sms.mob.com^
 @@||secureimage.securedataimages.com^
-@@||sedge.nfl.com^
 @@||settings-win.data.microsoft.com^
 @@||sgqcvfjvr.onet.pl^
 @@||skyapi.onedrive.live.com^
 @@||skydrivesync.policies.live.net^
 @@||smtp.focusgroupresearch.com^
-@@||sobot.com^
 @@||spartaindependent.com^
-@@||ssai.aniview.com^
-@@||stash.roistat.com^
 @@||stat.jseea.cn^
 @@||stats.britishbaseball.org.uk^
 @@||stats.gov.cn^
 @@||stats.uptimerobot.com^
 @@||storage.live.com^
-@@||str.hit.gemius.pl^
-@@||support-beacon.nakanohito.jp^
-@@||support-widget.nakanohito.jp^
-@@||surveymyopinion.researchnow.com^
-@@||swasc.homedepot.com^
-@@||tags.crwdcntrl.net^
 @@||taiga.maven.io^
 @@||tj.gov.cn^
 @@||tlh.gedidigital.it^
-@@||tms.capitalone.com^
 @@||tongji.cn^
 @@||tongji.edu.cn^
-@@||torimochi.line-apps.com^
 @@||tr.rdrtr.com^
-@@||track.rutarget.ru^
-@@||track.webgains.com^
 @@||tracker.eu.org^
 @@||trk.ecomm.lenovo.com^
-@@||tube.e.kuaishou.com^
 @@||uland.taobao.com^
 @@||unsubscribe.lhinsights.com^
 @@||used.ca^
-@@||validate.perfdrive.com^
-@@||vcentry2.valuecommerce.ne.jp^
-@@||vcentry3.valuecommerce.ne.jp^
-@@||vitacost.122.2o7.net^
-@@||wan.douyu.com^
 @@||webstatic.nero.com^
 @@||widget.intercom.io^
-@@||www.datadoghq-browser-agent.com^
 @@||www.dogpile.com^
-@@||www.googleadservices.com^
-@@||www.jdoqocy.com^
 @@||www.msftconnecttest.com^
-@@||www.statcounter.com^
 @@||wwwimage-tve.cbsstatic.com^
 @@||x2.ifengimg.com^
 

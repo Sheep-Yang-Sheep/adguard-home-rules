@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { parseLine, parseList, normalizeDomain } from './parser.js';
-import { subsumeByParent, mergeSources, findAllowShadowed } from './merger.js';
+import { subsumeByParent, mergeSources, findAllowShadowed, pruneBlockedAllows } from './merger.js';
 import { beijingNow, renderRules, verifyRenderedRules } from './render.js';
 import { buildCandidates, looksLikeRuleList } from './network.js';
+import { evaluateSourceGate, forceFromEnv } from './gate.js';
 
 test('标准屏蔽规则', () => {
   const r = parseLine('||example.com^');
@@ -66,7 +67,7 @@ test('无空格的行尾 # 注释也能剥掉', () => {
 
 test('共享后缀不参与父子域收敛', () => {
   // co.uk / github.io 被屏蔽时，收敛不能把名下所有子域规则一起删掉，
-  // 否则规则数瞬间塌陷，会误触发工作流「比上轮少 20% 就拒绝发布」的熔断。
+  // 否则规则数瞬间塌陷，把真实变化淹没在噪音里。
   const { keep, removed, protectedHits } = subsumeByParent([
     'co.uk',
     'a.co.uk',
@@ -419,9 +420,9 @@ test('缺 ^ 锚定与带路径分开统计', () => {
   assert.equal(parseLine('||example.com/ad.js').reason, 'path');
 });
 
-test('冲突统计只算收敛后仍在文件里的规则', () => {
-  // x.a.com 的屏蔽规则会被 a.com 收敛掉，文件里只剩 a.com 和 y.com，
-  // 因此真实同域冲突只有 y.com 一条
+test('同域冲突按黑名单优先处理后归零，且只统计收敛后仍在文件里的规则', () => {
+  // x.a.com 的屏蔽规则会被 a.com 收敛掉，文件里只剩 a.com 和 y.com；
+  // 两个白名单都与黑名单相交（x.a.com 落在 a.com 之下、y.com 同域），全部剔除
   const mk = (id, block, allow) => ({
     id,
     name: id,
@@ -451,7 +452,14 @@ test('冲突统计只算收敛后仍在文件里的规则', () => {
     ),
   ]);
   assert.deepEqual(result.block.map((b) => b.domain), ['a.com', 'y.com']);
-  assert.equal(result.stats.conflicts, 1, 'x.a.com 的屏蔽规则已不在文件中，不该算冲突');
+  assert.deepEqual(result.allow, [], '与黑名单相交的白名单必须全部剔除');
+  assert.equal(result.stats.conflicts, 0, '剔除后不应再有同域既屏蔽又放行');
+  assert.equal(
+    result.stats.conflictsResolved,
+    1,
+    'x.a.com 的屏蔽规则已被收敛，真实同域冲突只有 y.com 一条'
+  );
+  assert.equal(result.stats.allowDropped, 2);
 });
 
 test('被 $badfilter 点名的域名不参与父子域收敛', () => {
@@ -503,7 +511,7 @@ test('白名单 $important 跨源合并且能渲染出来', () => {
   assert.ok(out.includes('@@||a.com^$important'));
 });
 
-test('实际不生效的屏蔽规则合计 = 架空 + 同域放行 - $important 压制', () => {
+test('黑名单优先后「实际不生效的屏蔽规则」归零', () => {
   const mk = (id, block, allow) => ({
     id,
     name: id,
@@ -522,7 +530,7 @@ test('实际不生效的屏蔽规则合计 = 架空 + 同域放行 - $important 
     mk(
       's1',
       [
-        { kind: 'block', domain: 'ads.a.com' }, // 被 @@||a.com^ 架空
+        { kind: 'block', domain: 'ads.a.com' }, // 原本被 @@||a.com^ 架空
         { kind: 'block', domain: 'b.com' }, // 同域既有屏蔽又有 @@
       ],
       [
@@ -531,9 +539,17 @@ test('实际不生效的屏蔽规则合计 = 架空 + 同域放行 - $important 
       ]
     ),
   ]);
-  assert.equal(result.stats.allowShadowed, 1);
-  assert.equal(result.stats.conflicts, 1);
-  assert.equal(result.stats.deadRules, 2);
+  // a.com 的白名单解开了黑名单子域 ads.a.com，b.com 是同域冲突 → 两条都剔除
+  assert.equal(result.stats.allowDropped, 2);
+  assert.equal(result.stats.allowDroppedByReason['shadows-block'], 1);
+  assert.equal(result.stats.allowDroppedByReason['same-domain'], 1);
+  // 剔除白名单后，原本被架空的 ads.a.com 重新生效
+  assert.equal(result.stats.shadowRestored, 1);
+  assert.equal(result.stats.allowShadowed, 0);
+  assert.equal(result.stats.conflicts, 0);
+  assert.equal(result.stats.deadRules, 0);
+  assert.deepEqual(result.allow, []);
+  assert.equal(result.block.length, 2, '屏蔽规则一条都不能少');
 });
 
 test('抓取预算耗尽时能区分单源预算与全局预算', async () => {
@@ -610,4 +626,141 @@ test('产物自检能放过合法规则、拦住非法行', () => {
   const { bad } = verifyRenderedRules(broken, ['||*-ad-sign.byteimg.com^']);
   assert.equal(bad.length, 1);
   assert.equal(bad[0], '||bad domain.com^');
+});
+
+// ---------- 黑名单优先：白名单与黑名单相交即整条失效 ----------
+
+test('三种交集都剔除：同域 / 落在被屏蔽父域下 / 解开了黑名单子域', () => {
+  const { dropped, byReason } = pruneBlockedAllows(
+    ['ads.com', 'a.com', 'x.b.com', 'keep.com'],
+    ['ads.com', 'y.a.com', 'b.com', 'safe.com']
+  );
+  const reasonOf = new Map(dropped.map((d) => [d.domain, d.reason]));
+  assert.equal(reasonOf.get('ads.com'), 'same-domain');
+  assert.equal(reasonOf.get('y.a.com'), 'under-block', 'a.com 被屏蔽，其子域白名单等于给父域规则挖洞');
+  assert.equal(reasonOf.get('b.com'), 'shadows-block', 'x.b.com 被屏蔽，b.com 的白名单会把它解开');
+  assert.equal(reasonOf.has('safe.com'), false, '无交集的白名单必须保留');
+  assert.deepEqual(byReason, { 'same-domain': 1, 'under-block': 1, 'shadows-block': 1 });
+});
+
+test('白名单剔除后被屏蔽域名一条不少、且 @@ 不再出现在产物里', () => {
+  const result = mergeSources([
+    {
+      id: 's1',
+      name: 's1',
+      url: 'u',
+      homepage: 'h',
+      parsed: {
+        block: [
+          { kind: 'block', domain: 'ads.example.com' },
+          { kind: 'block', domain: 'tracker.example.net' },
+        ],
+        allow: [
+          { kind: 'allow', domain: 'example.com' }, // 覆盖了 ads.example.com
+          { kind: 'allow', domain: 'tracker.example.net' }, // 同域
+          { kind: 'allow', domain: 'safe.example.org' }, // 无冲突
+        ],
+        raw: [],
+        skipped: {},
+        totalLines: 5,
+        effective: 5,
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.allow.map((a) => a.domain), ['safe.example.org']);
+  assert.equal(result.block.length, 2, '屏蔽规则不能因为剔除白名单而消失');
+
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.ok(out.includes('@@||safe.example.org^'));
+  assert.ok(!out.includes('@@||example.com^'), '与黑名单冲突的白名单不能渲染进产物');
+  assert.ok(out.includes('||ads.example.com^'));
+});
+
+test('$important 不再是冲突判定的变量：带它的白名单同样失效', () => {
+  const result = mergeSources([
+    {
+      id: 's1',
+      name: 's1',
+      url: 'u',
+      homepage: 'h',
+      parsed: {
+        block: [{ kind: 'block', domain: 'a.com' }],
+        allow: [{ kind: 'allow', domain: 'a.com', important: true }],
+        raw: [],
+        skipped: {},
+        totalLines: 2,
+        effective: 2,
+      },
+    },
+  ]);
+  assert.deepEqual(result.allow, []);
+  assert.equal(result.stats.allowDropped, 1);
+});
+
+// ---------- 发布闸门：缺源不发布，增删源不影响 ----------
+
+test('任一上游没有可用地址就整轮不发布', () => {
+  const gate = evaluateSourceGate({
+    totalUpstreams: ['awavenue', 'adrules', 'oisd'],
+    okUpstreams: ['awavenue', 'oisd'],
+  });
+  assert.equal(gate.abort, true);
+  assert.deepEqual(gate.missing, ['adrules']);
+});
+
+test('增删源不影响发布：判定只看当前配置了哪些上游', () => {
+  // 删掉 adrules 后配置只剩两个，都成功 → 正常发布（不会因为总数变化而卡住）
+  assert.equal(
+    evaluateSourceGate({ totalUpstreams: ['awavenue', 'oisd'], okUpstreams: ['awavenue', 'oisd'] })
+      .abort,
+    false
+  );
+  // 新增一个源但它连不上 → 不发布，这正是要的效果
+  const added = evaluateSourceGate({
+    totalUpstreams: ['awavenue', 'oisd', 'newsrc'],
+    okUpstreams: ['awavenue', 'oisd'],
+  });
+  assert.equal(added.abort, true);
+  assert.deepEqual(added.missing, ['newsrc']);
+});
+
+test('同一上游的多个地址互为备份，主地址成功就不算缺源', () => {
+  // adrules 与 cat 是两个地址、同一个 upstream：cat 挂了但 adrules 成功，数据是完整的
+  const gate = evaluateSourceGate({
+    totalUpstreams: new Set(['adrules', 'oisd']),
+    okUpstreams: new Set(['adrules']),
+  });
+  assert.equal(gate.abort, true, 'oisd 仍然缺失，必须拦住');
+  assert.deepEqual(gate.missing, ['oisd']);
+
+  // 补齐 oisd 后，adrules 只有一个地址成功也照样发布
+  assert.equal(
+    evaluateSourceGate({
+      totalUpstreams: ['adrules', 'oisd'],
+      okUpstreams: ['adrules', 'oisd'],
+    }).abort,
+    false
+  );
+});
+
+test('force 可以临时忽略缺源', () => {
+  const gate = evaluateSourceGate({
+    totalUpstreams: ['a', 'b'],
+    okUpstreams: ['a'],
+    force: true,
+  });
+  assert.equal(gate.abort, false);
+  assert.equal(gate.forced, true);
+  assert.deepEqual(gate.missing, ['b']);
+});
+
+test('forceFromEnv 只认明确的开值', () => {
+  assert.equal(forceFromEnv({ FORCE: 'true' }), true);
+  assert.equal(forceFromEnv({ FORCE: 'TRUE' }), true);
+  assert.equal(forceFromEnv({ FORCE: '1' }), true);
+  assert.equal(forceFromEnv({ FORCE: 'yes' }), true);
+  assert.equal(forceFromEnv({ FORCE: 'false' }), false);
+  assert.equal(forceFromEnv({ FORCE: '' }), false);
+  assert.equal(forceFromEnv({}), false);
 });

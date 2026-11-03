@@ -9,8 +9,9 @@
  *   - 每小时唤醒一次，只有「仓库超过 STALE_HOURS 没有新提交」时才真正派发，
  *     因此不会和 GitHub 自己的 schedule 打架、也不会产生垃圾提交。
  *   - 派发走 repository_dispatch，不占用 workflow_dispatch 的手工入口。
- *   - client_payload.force 用于兜底「20% 跌幅熔断」：上游合法瘦身导致连续失败时，
- *     访问 /?token=xxx&force=1 就能强制发布一次，不用登录 GitHub 点按钮。
+ *   - client_payload.force 用于兜底「缺源不发布」闸门：某个上游确认永久下线、
+ *     但还没来得及从 sources.json 删掉时，访问 /?token=xxx&force=1 先强制发一版，
+ *     不用登录 GitHub 点按钮。
  */
 
 const DEFAULT_EVENT = 'update-rules';

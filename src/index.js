@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchText, mapLimit } from './network.js';
 import { parseList } from './parser.js';
 import { mergeSources } from './merger.js';
+import { evaluateSourceGate, forceFromEnv } from './gate.js';
 import {
   beijingNow,
   repoInfo,
@@ -216,21 +217,31 @@ async function main() {
     byUpstream.set(up, src);
   }
 
-  // 按「独立上游」而不是「地址条数」算成功率。
-  // 否则同一上游挂多个镜像条目会被重复扣分，阈值形同虚设。
+  // 按「独立上游」判定是否可用：任一上游在所有入口都失败，本轮就不发布。
+  // 旧逻辑是「独立上游成功率低于 75% 才放弃」，等于允许最多四分之一的源静默消失；
+  // 现在改为「一个都不能少」——某个源挂了就整轮不写文件，等它恢复或人工 force。
   const okUpstreams = new Set(parsedSources.map(upstreamOf));
-  const successRatio = okUpstreams.size / totalUpstreams.size;
-  const minRatio = config.minSuccessRatio ?? 0.75;
+  const gate = evaluateSourceGate({
+    totalUpstreams,
+    okUpstreams,
+    force: forceFromEnv(),
+  });
 
-  if (parsedSources.length === 0 || successRatio < minRatio) {
-    const missing = [...totalUpstreams].filter((u) => !okUpstreams.has(u));
+  if (gate.abort || parsedSources.length === 0) {
     log(
-      `\n[ABORT] 上游成功 ${okUpstreams.size}/${totalUpstreams.size}（${pct(
-        successRatio
-      )}）低于阈值 ${pct(minRatio)}，放弃本次输出以免发布残缺规则。`
+      `\n[ABORT] 上游可用 ${okUpstreams.size}/${totalUpstreams.size}，` +
+        `缺失: ${gate.missing.join(', ') || '(全部)'}`
     );
-    log(`        缺失上游: ${missing.join(', ')}`);
+    log('        配置中的每个上游都必须抓取成功，本轮不更新、不写任何文件，避免发布残缺规则。');
+    log('        若该源已永久下线，请从 sources.json 删掉它；');
+    log('        若确认要临时忽略，到 Actions 页面 Run workflow 勾选 force（或 dispatch 时传 force=true）。');
     process.exit(1);
+  }
+
+  if (gate.forced) {
+    log(
+      `\n[WARN] 有上游不可用（${gate.missing.join(', ')}），但已指定 force=true，继续发布本次结果。`
+    );
   }
 
   log(`\n[2/4] 解析完成（上游 ${okUpstreams.size}/${totalUpstreams.size}），开始合并`);
@@ -243,11 +254,11 @@ async function main() {
     )} 条 → 父域覆盖移除 ${n(s.subsumeRemoved + s.rawCovered)} 条 → 最终 ${n(s.after)} 条`
   );
   log(
-    `      体检: 白名单架空屏蔽 ${n(s.allowShadowed)} 条 · 同域冲突 ${n(
-      s.conflicts
-    )} 条（其中 $important 压制 ${n(s.importantOverAllow)} 条）· 解析丢弃 ${n(
-      s.skippedTotal
-    )} 行`
+    `      黑名单优先: 白名单剔除 ${n(s.allowDropped)} 条（同域 ${n(
+      (s.allowDroppedByReason || {})['same-domain'] || 0
+    )} · 父域覆盖 ${n((s.allowDroppedByReason || {})['under-block'] || 0)} · 解开黑名单子域 ${n(
+      (s.allowDroppedByReason || {})['shadows-block'] || 0
+    )}）· 恢复生效的屏蔽规则 ${n(s.shadowRestored)} 条 · 解析丢弃 ${n(s.skippedTotal)} 行`
   );
 
   const distPath = path.join(ROOT, repo.file);

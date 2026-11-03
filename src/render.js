@@ -91,12 +91,28 @@ export function renderRules(result, ctx) {
   out.push(`!   其中屏蔽规则: ${n(block.length)}`);
   out.push(`!   其中白名单例外: ${n(allow.length)}`);
   out.push(`!   其中通配/特殊规则: ${n(raw.length)}`);
+  if (stats.allowDropped) {
+    out.push(
+      `! 白名单例外去重后共 ${n(stats.allowUnique)} 条，其中 ${n(
+        stats.allowDropped
+      )} 条因与黑名单冲突被执行「黑名单优先」剔除`
+    );
+  }
   out.push('!');
   out.push('! ================= 体检报告 =================');
-  out.push(`! 被父域白名单 @@ 架空的屏蔽规则: ${n(stats.allowShadowed)}（仍在文件中，但实际不会拦截）`);
-  out.push(`! 同域既屏蔽又放行（按 @@ 生效）: ${n(stats.conflicts)}`);
-  out.push(`!   其中带 $important、会压过 @@ 的: ${n(stats.importantOverAllow)}`);
-  out.push(`! 实际不生效的屏蔽规则合计: ${n(stats.deadRules ?? 0)}（= 架空 + 同域放行 - $important 压制）`);
+  const byReason = stats.allowDroppedByReason || {};
+  out.push(
+    `! 【黑名单优先】因与黑名单交集而剔除的白名单 @@: ${n(stats.allowDropped ?? 0)}` +
+      (stats.allowDropped
+        ? `（同域 ${n(byReason['same-domain'] || 0)} · 位于被屏蔽父域下 ${n(
+            byReason['under-block'] || 0
+          )} · 解开了黑名单子域 ${n(byReason['shadows-block'] || 0)}）`
+        : '')
+  );
+  out.push(`! 因剔除白名单而重新生效的屏蔽规则: ${n(stats.shadowRestored ?? 0)}`);
+  out.push(
+    `! 实际不生效的屏蔽规则合计: ${n(stats.deadRules ?? 0)}（应为 0；不为 0 说明白名单优先逻辑有漏判）`
+  );
   if (stats.badfilterKept) {
     out.push(`! 因 $badfilter 点名而保留、未参与父子域收敛的规则: ${n(stats.badfilterKept)}`);
   }
@@ -129,7 +145,7 @@ export function renderRules(result, ctx) {
   out.push('! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。');
   out.push('');
 
-  out.push('! ============ 白名单例外规则（@@ 优先级高于普通屏蔽规则）============');
+  out.push('! ============ 白名单例外规则（已剔除与黑名单冲突的条目）============');
   for (const a of allow) out.push(a.important ? `@@||${a.domain}^$important` : `@@||${a.domain}^`);
   out.push('');
 
@@ -225,6 +241,11 @@ export function renderReadme(result, ctx) {
     '{{ALLOW}}': n(result.allow.length),
     '{{RAW}}': n(result.raw.length),
     '{{SHADOWED}}': n(stats.allowShadowed),
+    '{{ALLOW_DROPPED}}': n(stats.allowDropped ?? 0),
+    '{{ALLOW_DROPPED_SAME}}': n((stats.allowDroppedByReason || {})['same-domain'] || 0),
+    '{{ALLOW_DROPPED_UNDER}}': n((stats.allowDroppedByReason || {})['under-block'] || 0),
+    '{{ALLOW_DROPPED_SHADOW}}': n((stats.allowDroppedByReason || {})['shadows-block'] || 0),
+    '{{SHADOW_RESTORED}}': n(stats.shadowRestored ?? 0),
     '{{CONFLICTS}}': n(stats.conflicts),
     '{{IMPORTANT_OVER_ALLOW}}': n(stats.importantOverAllow),
     '{{DEAD_RULES}}': n(stats.deadRules ?? 0),
@@ -269,6 +290,10 @@ export function renderStatus(result, ctx) {
         block: result.block.length,
         allow: result.allow.length,
         raw: result.raw.length,
+        // 黑名单优先：多少白名单因与黑名单交集而被剔除
+        allowDropped: stats.allowDropped ?? 0,
+        allowDroppedByReason: stats.allowDroppedByReason || {},
+        shadowRestored: stats.shadowRestored ?? 0,
         allowShadowed: stats.allowShadowed,
         conflicts: stats.conflicts,
         importantOverAllow: stats.importantOverAllow,

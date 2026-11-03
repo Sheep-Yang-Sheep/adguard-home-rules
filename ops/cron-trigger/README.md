@@ -64,8 +64,8 @@ curl "$BASE/?token=<TRIGGER_SECRET>"         # 立刻派发一次
 
 派发成功后，GitHub Actions 页面会在几秒内出现一条 `repository_dispatch` 记录。
 
-**熔断兜底**：若日志里出现「比上轮少 20% 以上，拒绝发布」（上游合法瘦身），
-不用登录 GitHub 点按钮，直接：
+**缺源兜底**：发布闸门要求 `sources.json` 里每个上游都能抓取成功，缺一个就整轮不发布。
+若某个源已确认永久下线、想先发一版，不用登录 GitHub 点按钮，直接：
 
 ```bash
 curl "$BASE/?token=<TRIGGER_SECRET>&force=1"

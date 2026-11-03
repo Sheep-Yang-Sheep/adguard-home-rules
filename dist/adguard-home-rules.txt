@@ -3,7 +3,7 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-03 19:02
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-04 00:16
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
@@ -55,7 +55,7 @@
 ! 7. AdRules（Cats-Team 备份）（同上游镜像）
 !    https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt
 !    主页 https://github.com/Cats-Team/AdRules
-!    本次解析有效规则 208,031 条
+!    本次解析有效规则 208,187 条
 ! 8. OISD Small
 !    https://small.oisd.nl/
 !    主页 https://oisd.nl/

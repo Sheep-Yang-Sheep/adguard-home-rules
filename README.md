@@ -41,8 +41,8 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-04 20:00` 周三
-- **上次自动任务运行时间（北京时间）**：`2026-11-04 20:00`
+- **本合集更新时间（北京时间）**：`2026-11-05 01:21` 周四
+- **上次自动任务运行时间（北京时间）**：`2026-11-05 01:21`
 
 | 指标 | 数值 |
 | --- | --- |
@@ -78,7 +78,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 247,757 |
 | 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,225 |
-| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,282 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,411 |
 | 8 | OISD Small | https://small.oisd.nl/ | 60,126 |
 
 各源版权归原作者所有，请遵守各自的使用条款。

@@ -1,8 +1,8 @@
 {
-  "updatedAtBeijing": "2026-11-04 20:00",
-  "runAtBeijing": "2026-11-04 20:00",
-  "updatedAtUtc": "2026-11-04T12:00:05.213Z",
-  "runAtUtc": "2026-11-04T12:00:05.213Z",
+  "updatedAtBeijing": "2026-11-05 01:21",
+  "runAtBeijing": "2026-11-05 01:21",
+  "updatedAtUtc": "2026-11-04T17:21:32.827Z",
+  "runAtUtc": "2026-11-04T17:21:32.827Z",
   "upstreams": 7,
   "before": 859110,
   "after": 379893,
@@ -39,7 +39,7 @@
     "adrules": 206610,
     "217heidai": 241854,
     "antiad": 101225,
-    "cat": 208282,
+    "cat": 208411,
     "oisd": 60126,
     "hagezi": 247757
   }

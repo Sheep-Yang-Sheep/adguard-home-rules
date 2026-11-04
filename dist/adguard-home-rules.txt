@@ -3,19 +3,19 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-04 02:29
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-04 08:02
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
-! 合并前规则数（各上游合计，含重复）: 859,024
-! 去重后规则数: 395,581
-!   其中屏蔽规则去重后: 394,859
+! 合并前规则数（各上游合计，含重复）: 859,070
+! 去重后规则数: 395,619
+!   其中屏蔽规则去重后: 394,897
 !   其中白名单例外去重后: 243
 !   其中通配/特殊规则去重后: 479
 ! 被父域规则覆盖而移除的冗余规则: 15,650
 !   其中子域规则: 15,578 · 通配规则: 72
-! 合并后规则数: 379,815
-!   其中屏蔽规则: 379,281
+! 合并后规则数: 379,853
+!   其中屏蔽规则: 379,319
 !   其中白名单例外: 127
 !   其中通配/特殊规则: 407
 ! 白名单例外去重后共 243 条，其中 116 条因与黑名单冲突被执行「黑名单优先」剔除
@@ -55,11 +55,11 @@
 ! 7. AdRules（Cats-Team 备份）（同上游镜像）
 !    https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt
 !    主页 https://github.com/Cats-Team/AdRules
-!    本次解析有效规则 208,187 条
+!    本次解析有效规则 208,246 条
 ! 8. OISD Small
 !    https://small.oisd.nl/
 !    主页 https://oisd.nl/
-!    本次解析有效规则 60,040 条
+!    本次解析有效规则 60,086 条
 !
 ! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。
 
@@ -16135,6 +16135,7 @@
 ||abtrcker.com^
 ||abtsgfncqtxda.site^
 ||abtshield.com^
+||abtsofhqtqdnl.online^
 ||abtt.pufenchuanmu.com^
 ||abtthlftcjqoz.site^
 ||abttwfawimtrq.site^
@@ -16185,6 +16186,7 @@
 ||abxajspanob.in^
 ||abxalpognw.com^
 ||abxbcuordows.in^
+||abxcsiahbpqmw.space^
 ||abxenldkpytji.online^
 ||abxokzmu.com^
 ||abxslg.jollyroom.fi^
@@ -28103,6 +28105,7 @@
 ||afuqrfxeptlxe.site^
 ||afutfjyhihsdy.space^
 ||afuz032.com^
+||afvcrykaqo.in^
 ||afvghesmy.in^
 ||afvnzlgxo.com^
 ||afwfwhqmvjgmo.online^
@@ -41579,6 +41582,7 @@
 ||api-music-analytics.deezer.com^
 ||api-n.outgrow.co^
 ||api-napoli.store.sscnapoli.it^
+||api-node.corvexa.cloud^
 ||api-nodefix.pages.dev^
 ||api-notify.markarch.com^
 ||api-p.analytics.relay.link^
@@ -49939,6 +49943,7 @@
 ||ayads-network-centor.com^
 ||ayads.co^
 ||ayads.io^
+||ayadsdyieahbn.space^
 ||ayakyualjj.com^
 ||ayancqseakeek.space^
 ||ayapanatwicer.com^
@@ -60283,6 +60288,7 @@
 ||bqnycimizqnnd.website^
 ||bqofy.dinosty.de^
 ||bqogqcbbr.com^
+||bqohmtzgtwyvi.space^
 ||bqoiz.ingoodtaste.com^
 ||bqoulb.nowo.pt^
 ||bqplydkjst.com^
@@ -72181,6 +72187,7 @@
 ||cjokeswyxctoe.space^
 ||cjpccsnjqxbwf.site^
 ||cjpeiq.rmgbuyukbeden.com^
+||cjpgaszjnhhzh.space^
 ||cjqnkzqlwetrd.website^
 ||cjqrjj.dekorbizden.com^
 ||cjqxihvwcopgj.space^
@@ -102092,6 +102099,7 @@
 ||dqhi3ea93ztgv.cloudfront.net^
 ||dqicwrwciokpigi.com^
 ||dqif5bl25s0bf.cloudfront.net^
+||dqjlsxiccfxvi.site^
 ||dqjojx.xyz^
 ||dqkj-fq6-o46svx-qht-e3eofu.pages.dev^
 ||dql2sdu63f1cw.cloudfront.net^
@@ -118363,6 +118371,7 @@
 ||fds.api.moji.com^
 ||fds.bmfwwz.top^
 ||fdsafeguard.org^
+||fdseb8s0y.com^
 ||fdshsjss.weebly.com^
 ||fdsq.vb4rvq.cn^
 ||fdssklrlpqhxt.site^
@@ -121425,6 +121434,7 @@
 ||fkbwtoopwg.com^
 ||fkczwsqlpdokj.online^
 ||fkdaik.lightinthebox.com^
+||fkdeavpxkjuoa.space^
 ||fkdhbmsss.com^
 ||fkdplern.shop^
 ||fkdwmpbpsggha.online^
@@ -124629,6 +124639,7 @@
 ||freeadult.games^
 ||freeadultcomix.com^
 ||freeallsafe.com^
+||freealremark.org^
 ||freeasphost.net^
 ||freeavalanche.ru^
 ||freeavmhzwr.click^
@@ -128433,6 +128444,7 @@
 ||gawnbeardycursive.cyou^
 ||gaws30.webwave.me^
 ||gaxduni.shop^
+||gaxejjfvhogej.space^
 ||gaxkyokrghyts.online^
 ||gaxmuli.shop^
 ||gaxvuri.shop^
@@ -131862,6 +131874,7 @@
 ||gliybhqdie.xyz^
 ||glizauvo.net^
 ||glizoakri.net^
+||gljnvnqgrnhwm.website^
 ||gljoinery.com^
 ||gljsw.com^
 ||glkadcvafpqhe.online^
@@ -134935,6 +134948,7 @@
 ||gqdajtjwzbikn.space^
 ||gqdfgyz.cn^
 ||gqdui.weareplufl.com^
+||gqdwbcvnltcmy.website^
 ||gqfck5gnwf88zjqq6pepmwvfg48.cfd^
 ||gqfga.senreve.com^
 ||gqfoi.roewellness.com^
@@ -143008,6 +143022,7 @@
 ||gusion.space^
 ||guslew.webcindario.com^
 ||gusoclji.com^
+||gusonzwqabdjh.space^
 ||gusozpamc.in^
 ||gussame.com^
 ||gussbkpr.website^
@@ -153755,6 +153770,7 @@
 ||ihcamp.ybtour.co.kr^
 ||ihcfhcebffgbcjaeaafa.world^
 ||ihclam.cn^
+||ihcmxwwdihsdi.site^
 ||ihcrqa.sonnenklar.tv^
 ||ihct.mx^
 ||ihculppauwbhc.online^
@@ -161237,6 +161253,7 @@
 ||iuc8z.mu-diban.com^
 ||iucksforme.net^
 ||iuckyluck.net^
+||iucwyrvskyyvn.space^
 ||iudlc.wisdompanel.com^
 ||iudoetilkfdxu.site^
 ||iuffrp.promdressshop.com^
@@ -163474,6 +163491,7 @@
 ||jhtxibydmcfwp.site^
 ||jhucgajukrvhauskjvuweyi-wgsxjyhjhwcs.teemill.com^
 ||jhukfaosdjfa.com^
+||jhuqoqpfxpnay.site^
 ||jhuzffeiiargq.space^
 ||jhvchv.xyz^
 ||jhvhh.marinadelreyhotel.com^
@@ -165842,6 +165860,7 @@
 ||jujtcq.amnibus.com^
 ||jujuismrealize.com^
 ||jujuistfrixion.cyou^
+||jukcdvsgozbiy.space^
 ||jukcha.com^
 ||jukebox.pathfactory.com^
 ||jukkudot.com^
@@ -167785,6 +167804,7 @@
 ||kc47c6fa.eulerian.io^
 ||kc4r7.uspassportonlineportal.com^
 ||kc9.cn^
+||kca7afgqg.com^
 ||kcafupebrgybq.website^
 ||kcahc.fireauthority.com^
 ||kcb-capital.online^
@@ -191053,6 +191073,7 @@
 ||lxbwquyuoovrx.space^
 ||lxcdn.dl.files.xiaomi.net^
 ||lxckra.lottemart.com^
+||lxcnkjbyglfvy.site^
 ||lxcvt.shop^
 ||lxczj.com^
 ||lxdjujrwkorbm.space^
@@ -225889,6 +225910,7 @@
 ||ohtdbl.mister-auto.es^
 ||ohtoxlkm.com^
 ||ohtqpg.morphyrichards.co.uk^
+||ohtunuswezbap.space^
 ||ohtxuvovztte.in^
 ||ohubyyrzoilxur.com^
 ||ohucxcdstxgqx.online^
@@ -225938,6 +225960,7 @@
 ||oifthjnpbzycw.online^
 ||oifyeldk.top^
 ||oifyyeiuwnpzc.space^
+||oigreykofphcz.site^
 ||oihgombbziwby.online^
 ||oihjkobiyortd.space^
 ||oihmdr.latiendadelapicultor.com^
@@ -229854,6 +229877,7 @@
 ||orvietnmqxcgm.online^
 ||orvillebosksbougee.cyou^
 ||orvillehogtie.com^
+||orviwiatndnfy.website^
 ||orvqwylf.in^
 ||orvynwien.com^
 ||orvyqellethandrimos.org^
@@ -246462,6 +246486,7 @@
 ||psicologiateologica.com^
 ||psidbv.cms-constructeur.fr^
 ||psidrurally.qpon^
+||psilemjexhttc.site^
 ||psilikaki.openapp.link^
 ||psimart.com^
 ||psimaungailoal.com^
@@ -253102,6 +253127,7 @@
 ||qzdsycgjsiakb.site^
 ||qzeavzrfaoqn.com^
 ||qzetnversitym.com^
+||qzfjenkimltmx.site^
 ||qzfrzp.bewooden.cz^
 ||qzfsdxzxyhejf.website^
 ||qzfxcf.coastal.com^
@@ -259540,6 +259566,7 @@
 ||rmelvo.shop^
 ||rmervvazoomww.top^
 ||rmfah.guudies.co^
+||rmfdjplxffznf.website^
 ||rmffg.tadibrothers.com^
 ||rmfgjqpeo.com^
 ||rmfkpysvzygpa.online^
@@ -286589,6 +286616,7 @@
 ||slp-haushaltsgerate.de^
 ||slpineexyksjm.website^
 ||slqcfosyuqqsj.site^
+||slqdkguiypxzu.online^
 ||slqhoitusidsr.site^
 ||slreinigungsfirma.de^
 ||slru.top^
@@ -295768,6 +295796,7 @@
 ||spm-tnr.co.id^
 ||spm.gmarket.co.kr^
 ||spmaeu.gumtree.com.au^
+||spmdauzpayeda.space^
 ||spmfrncawaaey.site^
 ||spmqfymfgbfha.space^
 ||spmqkfodtwzit.site^
@@ -296384,6 +296413,7 @@
 ||sqbjrevvtnqlz.space^
 ||sqblmvqgrp.com^
 ||sqbzvlttwmodm.space^
+||sqccqjeqebguz.site^
 ||sqcmgr.nils.ru^
 ||sqcrb.dlouise.co.uk^
 ||sqcrlgnhawivg.website^
@@ -322000,6 +322030,7 @@
 ||svjetlobrfinlore.net^
 ||svjpghwlxvmgv.online^
 ||svjpq.samedelman.ca^
+||svjvuwevdwqxv.space^
 ||svk-native.ru^
 ||svkxsriketxxc.space^
 ||svlitnlsrnrfg.website^
@@ -324988,6 +325019,7 @@
 ||tadlkyhryl.com^
 ||tadmv.com^
 ||tadod.com^
+||tadodpfikom.in^
 ||tadpro.xyz^
 ||tadpull.com^
 ||tads.me^
@@ -329758,6 +329790,7 @@
 ||tetsoodsuxulr.com^
 ||tettacrown.com^
 ||tettone-18.dddaa.com^
+||tettvlflcprdr.site^
 ||tetvxsedkmlgh.site^
 ||teue.cn^
 ||teufel-eu.shop^
@@ -344762,6 +344795,7 @@
 ||tx99y.net^
 ||tx9k796ufrtxx4n4vxtm.cfd^
 ||txaglaw.com^
+||txapmczlkxoux.space^
 ||txaxkc.dsc-nightstore.com^
 ||txbhhh.xyz^
 ||txbtpc.trainning.com.br^
@@ -352229,6 +352263,7 @@
 ||vayco.de^
 ||vayeto.digital^
 ||vaykamo.com^
+||vaylkkybnfbbn.site^
 ||vaynganhang.net^
 ||vaynhanhonline1.com^
 ||vaynhanhvn.net^
@@ -354504,6 +354539,7 @@
 ||vimond-playerevents.eyevinn-player-analytics-eventsink.auto.prod-se.osaas.io^
 ||vimpokbpdvctc.site^
 ||vimrcluqfmwih.site^
+||vimvqukyxpaso.site^
 ||vimxpd.calcadoslaroche.com.br^
 ||vin.analytics.ovhnextmillmedia.com^
 ||vin1.analytics.ovhnextmillmedia.com^
@@ -369243,6 +369279,7 @@
 ||xgxiyfjwll.com^
 ||xgxncacvhbfud.site^
 ||xgxokdvjgzmoo.space^
+||xgyfzcnypzvas.space^
 ||xgysy.aureumcollective.com^
 ||xgyvaf.easydew.co.kr^
 ||xgzdys.com^
@@ -373464,6 +373501,7 @@
 ||ygljimnilvubc.com^
 ||ygmkcuj3v.com^
 ||ygmpia.worten.pt^
+||ygnkikbxptrce.website^
 ||ygnooddg.shop^
 ||ygnqsodvfsqfv.space^
 ||ygofdxgqlnptp.site^

@@ -41,25 +41,25 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-05 21:19` 周四
-- **上次自动任务运行时间（北京时间）**：`2026-11-05 21:19`
+- **本合集更新时间（北京时间）**：`2026-11-06 00:16` 周五
+- **上次自动任务运行时间（北京时间）**：`2026-11-06 00:16`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 834,685 |
-| 去重后规则数 | 381,262 |
-| 被父域规则覆盖而移除的冗余规则 | 21,028 |
-| **合并后规则数** | **360,118** |
-| └ 屏蔽规则 | 359,583 |
-| └ 白名单例外 `@@` | 127 |
+| 合并前规则数（各上游合计，含重复） | 829,065 |
+| 去重后规则数 | 381,112 |
+| 被父域规则覆盖而移除的冗余规则 | 21,000 |
+| **合并后规则数** | **359,977** |
+| └ 屏蔽规则 | 359,402 |
+| └ 白名单例外 `@@` | 167 |
 | └ 通配 / 特殊规则 | 408 |
-| 白名单因与黑名单冲突而失效（已剔除） | 116 |
-| └ 同域既屏蔽又放行 | 29 |
-| └ 白名单位于被屏蔽父域之下 | 85 |
-| └ 白名单解开了黑名单里的子域 | 2 |
-| 因剔除白名单而恢复生效的屏蔽规则 | 4 |
+| 白名单因与黑名单冲突而失效（已剔除） | 135 |
+| └ 同域既屏蔽又放行 | 44 |
+| └ 白名单位于被屏蔽父域之下 | 88 |
+| └ 白名单解开了黑名单里的子域 | 3 |
+| 因剔除白名单而恢复生效的屏蔽规则 | 8 |
 | **实际不生效的屏蔽规则合计** | **0** |
-| 解析阶段丢弃的行（DNS 层无效） | 153 |
+| 解析阶段丢弃的行（DNS 层无效） | 183 |
 
 > 「本合集更新时间」只在规则内容真的发生变化时才刷新，「上次任务运行时间」由定时任务刷新，可据此判断自动任务是否正常。
 > 若「上次任务运行时间」超过 **12 小时**没动，说明自动任务真的停摆了，请到 Actions 页面查看失败原因。
@@ -77,8 +77,8 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,610 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 222,452 |
-| 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,880 |
-| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,551 |
+| 6 | anti-AD | https://anti-ad.net/easylist.txt | 96,260 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,643 |
 | 8 | OISD Small | https://small.oisd.nl/ | 60,351 |
 
 各源版权归原作者所有，请遵守各自的使用条款。

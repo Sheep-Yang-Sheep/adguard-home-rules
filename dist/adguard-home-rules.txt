@@ -3,7 +3,7 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-06 00:16
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-06 00:18
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
@@ -27,7 +27,7 @@
 ! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: 3
 ! 解析阶段丢弃 183 行: 注释 63 · 正则规则 58 · 非法域名/IP 54 · 无法识别 4 · 带路径的 URL 规则 3 · DNS 层无效修饰符 1
 !
-! ================= 上游订阅源（8 个地址 / 7 个独立上游）=================
+! ================= 上游订阅源（7 个地址 / 7 个独立上游）=================
 ! 1. 秋风 AWAvenue Ads Rule
 !    https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt
 !    主页 https://github.com/TG-Twilight/AWAvenue-Ads-Rule
@@ -52,11 +52,7 @@
 !    https://anti-ad.net/easylist.txt
 !    主页 https://anti-ad.net/
 !    本次解析有效规则 96,260 条
-! 7. AdRules（Cats-Team 备份）（同上游镜像）
-!    https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt
-!    主页 https://github.com/Cats-Team/AdRules
-!    本次解析有效规则 208,643 条
-! 8. OISD Small
+! 7. OISD Small
 !    https://small.oisd.nl/
 !    主页 https://oisd.nl/
 !    本次解析有效规则 60,351 条

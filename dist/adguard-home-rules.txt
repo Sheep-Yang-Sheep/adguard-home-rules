@@ -3,7 +3,7 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-06 04:44
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-06 05:55
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
@@ -12067,7 +12067,6 @@
 ||65spy7rgcu.com^
 ||65sse.668ddf.cc^
 ||65vk1fba34.com^
-||65we9o3r5whl2fxw7nux66.rest^
 ||66-23-193-126.traefik.me^
 ||66-trk-srv.com^
 ||6604.org^
@@ -20168,6 +20167,7 @@
 ||acidpigs.com^
 ||acidprejudice.com^
 ||acidprolific.com^
+||aciduporta.store^
 ||acieswealth.com^
 ||acikrxl5di.data.adobedc.net^
 ||acilevarkadasi.com^
@@ -76221,6 +76221,7 @@
 ||brightmintwarrant.org^
 ||brightmosaic.info^
 ||brightmountainmedia.com^
+||brightnestcraft.com^
 ||brightnew.digital^
 ||brightoakventure.digital^
 ||brightonandhovekitchens.co.uk^
@@ -88061,6 +88062,7 @@
 ||centerhiss.com^
 ||centerid-seclogin.servebeer.com^
 ||centerieengmiserableness.info^
+||centerpieceorbitnarrow.bond^
 ||centerpieces-with-feathers-for-weddi.blogspot.com^
 ||centerpointmedia.com^
 ||centerpolicy-helps.pages.dev^
@@ -91766,6 +91768,7 @@
 ||cityselect.shop^
 ||citysite.net^
 ||citytrendgrid.com^
+||citytrends.site^
 ||cityventure.org^
 ||cityyogasc.com^
 ||ciuanwiiixvmx.space^
@@ -95961,7 +95964,6 @@
 ||coffeyelectric.com^
 ||coffiimg.beer^
 ||coffinlapflight.com^
-||cofflehexapla.com^
 ||coffrefortsecur.fr^
 ||coffrencia.live^
 ||coffrncia.com^
@@ -103513,7 +103515,6 @@
 ||cowardprotest.com^
 ||cowardrainbowactual.com^
 ||cowardsagrias.com^
-||cowardsfumbler.cyou^
 ||cowbelltime.com^
 ||cowbirdipecacs.top^
 ||cowbirdyacca.shop^
@@ -191138,7 +191139,6 @@
 ||hotterpareusunshent.cfd^
 ||hottest-girls-online.com^
 ||hottestfurniture.com^
-||hottieardilla.cyou^
 ||hottmatchy.com^
 ||hotto.duckdns.org^
 ||hottophot.com^
@@ -216891,6 +216891,7 @@
 ||kirhtq.anicom-sompo.co.jp^
 ||kirietabawisf.site^
 ||kiril2026pl.eu.cc^
+||kirilqqwoo24pl.eu.cc^
 ||kirkburgett.com^
 ||kirkhams.de^
 ||kirkifyfoam.qpon^
@@ -240816,7 +240817,6 @@
 ||lopp-e8780.firebaseapp.com^
 ||lopp-e8780.web.app^
 ||loppardyellowy.com^
-||loppetickierbavoso.cyou^
 ||loppgophiles.info^
 ||loppuunarr.bio^
 ||lopqena.shop^
@@ -257576,7 +257576,6 @@
 ||melda.koala.com^
 ||meldebescheinigung.eu^
 ||meldezettel-digital.at^
-||meldropmynas.cyou^
 ||melek.store^
 ||melfiro.shop^
 ||melgame.live^
@@ -279767,6 +279766,7 @@
 ||nice-babes-nearby.com^
 ||nice-gray-rmhnvluy.edgeone.dev^
 ||nice-humor-232215.framer.app^
+||nice-pond-00b9d0903.6.azurestaticapps.net^
 ||nice-protect.com^
 ||nice-sparrow-465947.framer.app^
 ||nice.kuaizq.com^
@@ -305704,7 +305704,6 @@
 ||pktbuu.morau.top^
 ||pkthi.com^
 ||pkthop.com^
-||pktotjuksifsz.website^
 ||pktytp.membershop.lv^
 ||pkurr.com^
 ||pkuz.xyz^
@@ -365602,6 +365601,7 @@
 ||sledz-przesylke.com^
 ||sledzenie-paczki.com^
 ||sledzenie-przesylki.co^
+||sledzeniepaczki.cfd^
 ||sleek-dividends.com^
 ||sleek-edges.com^
 ||sleek-shaft.com^
@@ -441912,7 +441912,6 @@
 ||unroastspitted.com^
 ||unrobebemottoirfan.cfd^
 ||unropegaud.com^
-||unrotedsatan.cfd^
 ||unrotomon.com^
 ||unrqqiddledwhisker.info^
 ||unruly-cost.pro^
@@ -450503,6 +450502,7 @@
 ||villagerrepair.com^
 ||villagetraitgarret.com^
 ||villagybullion.cyou^
+||villahearth.com^
 ||villainabongo.cfd^
 ||villainindiscreetnewsletter.com^
 ||villainous-track.pro^

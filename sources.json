@@ -50,13 +50,6 @@
       "homepage": "https://anti-ad.net/"
     },
     {
-      "id": "cat",
-      "name": "AdRules（Cats-Team 备份）",
-      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
-      "homepage": "https://github.com/Cats-Team/AdRules",
-      "upstream": "adrules"
-    },
-    {
       "id": "oisd",
       "name": "OISD Small",
       "url": "https://small.oisd.nl/",

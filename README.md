@@ -41,16 +41,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-05 03:40` 周四
-- **上次自动任务运行时间（北京时间）**：`2026-11-05 06:42`
+- **本合集更新时间（北京时间）**：`2026-11-05 08:51` 周四
+- **上次自动任务运行时间（北京时间）**：`2026-11-05 08:51`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 851,029 |
-| 去重后规则数 | 398,114 |
-| 被父域规则覆盖而移除的冗余规则 | 23,100 |
-| **合并后规则数** | **374,898** |
-| └ 屏蔽规则 | 374,364 |
+| 合并前规则数（各上游合计，含重复） | 851,782 |
+| 去重后规则数 | 398,164 |
+| 被父域规则覆盖而移除的冗余规则 | 23,099 |
+| **合并后规则数** | **374,949** |
+| └ 屏蔽规则 | 374,415 |
 | └ 白名单例外 `@@` | 127 |
 | └ 通配 / 特殊规则 | 407 |
 | 白名单因与黑名单冲突而失效（已剔除） | 116 |
@@ -77,9 +77,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | 3 | adrules 国内规则（主站） | https://adrules.top/dns.txt | 206,610 |
 | 4 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
 | 5 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 239,581 |
-| 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,225 |
-| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,411 |
-| 8 | OISD Small | https://small.oisd.nl/ | 60,221 |
+| 6 | anti-AD | https://anti-ad.net/adguard.txt | 101,880 |
+| 7 | AdRules（Cats-Team 备份） <sub>镜像</sub> | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 208,509 |
+| 8 | OISD Small | https://small.oisd.nl/ | 60,319 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 

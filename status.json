@@ -1,16 +1,16 @@
 {
-  "updatedAtBeijing": "2026-11-06 05:55",
-  "runAtBeijing": "2026-11-06 05:55",
-  "updatedAtUtc": "2026-11-05T21:55:29.099Z",
-  "runAtUtc": "2026-11-05T21:55:29.099Z",
-  "upstreams": 7,
-  "before": 993356,
-  "after": 484513,
-  "subsumeRemoved": 26173,
-  "rawCovered": 72,
-  "block": 483939,
+  "updatedAtBeijing": "2026-11-06 08:01",
+  "runAtBeijing": "2026-11-06 08:01",
+  "updatedAtUtc": "2026-11-06T00:01:45.899Z",
+  "runAtUtc": "2026-11-06T00:01:45.899Z",
+  "upstreams": 5,
+  "before": 763167,
+  "after": 362582,
+  "subsumeRemoved": 20769,
+  "rawCovered": 71,
+  "block": 362007,
   "allow": 167,
-  "raw": 407,
+  "raw": 408,
   "allowDropped": 135,
   "allowDroppedByReason": {
     "same-domain": 44,
@@ -23,11 +23,10 @@
   "importantOverAllow": 0,
   "deadRules": 0,
   "badfilterKept": 0,
-  "sharedSuffixKept": 31,
-  "skippedTotal": 183,
+  "sharedSuffixKept": 3,
+  "skippedTotal": 160,
   "skipped": {
-    "comment": 63,
-    "unknown": 4,
+    "comment": 44,
     "path": 3,
     "invalid-domain": 54,
     "regex": 58,
@@ -35,12 +34,10 @@
   },
   "failedSources": [],
   "sources": {
-    "awavenue": 972,
     "qy": 566,
-    "adrules": 206610,
     "217heidai": 241854,
     "antiad": 96260,
-    "oisd": 232454,
-    "hagezi": 214640
+    "hagezi": 214640,
+    "cat": 209847
   }
 }

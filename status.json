@@ -1,14 +1,14 @@
 {
-  "updatedAtBeijing": "2026-11-07 02:05",
-  "runAtBeijing": "2026-11-07 05:26",
-  "updatedAtUtc": "2026-11-06T18:05:46.438Z",
-  "runAtUtc": "2026-11-06T21:26:41.957Z",
+  "updatedAtBeijing": "2026-11-07 07:44",
+  "runAtBeijing": "2026-11-07 07:44",
+  "updatedAtUtc": "2026-11-06T23:44:38.258Z",
+  "runAtUtc": "2026-11-06T23:44:38.258Z",
   "upstreams": 5,
-  "before": 768034,
-  "after": 362470,
+  "before": 768159,
+  "after": 362565,
   "subsumeRemoved": 19031,
   "rawCovered": 71,
-  "block": 361896,
+  "block": 361991,
   "allow": 167,
   "raw": 407,
   "allowDropped": 135,
@@ -38,6 +38,6 @@
     "217heidai": 241854,
     "antiad": 96260,
     "hagezi": 219320,
-    "cat": 210034
+    "cat": 210159
   }
 }

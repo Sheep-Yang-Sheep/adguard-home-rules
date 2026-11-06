@@ -13,23 +13,10 @@
   },
   "sources": [
     {
-      "id": "awavenue",
-      "name": "秋风 AWAvenue Ads Rule",
-      "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt",
-      "homepage": "https://github.com/TG-Twilight/AWAvenue-Ads-Rule"
-    },
-    {
       "id": "qy",
       "name": "QY Ads Rule",
       "url": "https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt",
       "homepage": "https://github.com/rssvcn/qy-Ads-Rule"
-    },
-    {
-      "id": "adrules",
-      "name": "adrules 国内规则（主站）",
-      "url": "https://adrules.top/dns.txt",
-      "homepage": "https://adrules.top/",
-      "upstream": "adrules"
     },
     {
       "id": "217heidai",
@@ -50,10 +37,10 @@
       "homepage": "https://anti-ad.net/"
     },
     {
-      "id": "oisd",
-      "name": "OISD big",
-      "url": "https://big.oisd.nl",
-      "homepage": "https://oisd.nl/"
+      "id": "cat",
+      "name": "cat",
+      "url": "https://gp.adrules.top/dns.txt",
+      "homepage": "https://github.com/Cats-Team/AdRules"
     }
   ]
 }

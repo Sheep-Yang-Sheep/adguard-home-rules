@@ -41,16 +41,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-07 22:09` 周六
-- **上次自动任务运行时间（北京时间）**：`2026-11-07 22:09`
+- **本合集更新时间（北京时间）**：`2026-11-08 03:29` 周日
+- **上次自动任务运行时间（北京时间）**：`2026-11-08 03:29`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 817,517 |
-| 去重后规则数 | 436,800 |
-| 被父域规则覆盖而移除的冗余规则 | 77,073 |
-| **合并后规则数** | **359,592** |
-| └ 屏蔽规则 | 358,972 |
+| 合并前规则数（各上游合计，含重复） | 760,495 |
+| 去重后规则数 | 381,055 |
+| 被父域规则覆盖而移除的冗余规则 | 22,341 |
+| **合并后规则数** | **358,580** |
+| └ 屏蔽规则 | 357,960 |
 | └ 白名单例外 `@@` | 211 |
 | └ 通配 / 特殊规则 | 409 |
 | 白名单因与黑名单冲突而失效（已剔除） | 134 |
@@ -59,7 +59,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | └ 白名单解开了黑名单里的子域 | 3 |
 | 因剔除白名单而恢复生效的屏蔽规则 | 8 |
 | **强制白名单条目（`allowlist.txt`）** | **44** |
-| └ 其中命中上游屏蔽、已移除对应屏蔽规则 | 44（移除 44 条） |
+| └ 其中命中上游屏蔽、已移除对应屏蔽规则 | 43（移除 43 条） |
 | **实际不生效的屏蔽规则合计** | **0** |
 | 解析阶段丢弃的行（DNS 层无效） | 160 |
 
@@ -76,7 +76,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | --- | --- | --- | --- |
 | 1 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
 | 2 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
-| 3 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 268,491 |
+| 3 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 211,469 |
 | 4 | anti-AD | https://anti-ad.net/easylist.txt | 96,260 |
 | 5 | cat | https://gp.adrules.top/dns.txt | 210,346 |
 
@@ -139,7 +139,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 - **覆盖到的屏蔽规则会被直接删除** —— 产物里只剩一条 `@@||域名^`，不会出现「既屏蔽又放行」的自相矛盾，也不会被统计成「不生效的屏蔽规则」；
 - **优先级最高** —— `@@` 例外在 AdGuard Home 里本就压过普通屏蔽规则（只有带 `$important` 的屏蔽规则能压过它，本项目会把这类规则一并删除）。
 
-合并时对每个强制白名单域名 D，会删掉所有「等于 D 或以 `.D` 结尾」的屏蔽规则，然后写出一条 `@@||D^`。当前共 44 条，其中 44 条真的命中了上游屏蔽，一共移除 44 条误杀规则。
+合并时对每个强制白名单域名 D，会删掉所有「等于 D 或以 `.D` 结尾」的屏蔽规则，然后写出一条 `@@||D^`。当前共 44 条，其中 43 条真的命中了上游屏蔽，一共移除 43 条误杀规则。
 
 ### 5.2 为什么不会被自动任务覆盖
 

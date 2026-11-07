@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { parseLine, parseList, normalizeDomain } from './parser.js';
-import { subsumeByParent, mergeSources, findAllowShadowed, pruneBlockedAllows } from './merger.js';
+import { subsumeByParent, mergeSources, findAllowShadowed, pruneBlockedAllows, isSelfOrSubdomain } from './merger.js';
+import { parseAllowlist, loadAllowlist } from './allowlist.js';
 import { beijingNow, renderRules, verifyRenderedRules } from './render.js';
 import { buildCandidates, looksLikeRuleList } from './network.js';
 import { evaluateSourceGate, forceFromEnv } from './gate.js';
@@ -763,4 +764,142 @@ test('forceFromEnv 只认明确的开值', () => {
   assert.equal(forceFromEnv({ FORCE: 'false' }), false);
   assert.equal(forceFromEnv({ FORCE: '' }), false);
   assert.equal(forceFromEnv({}), false);
+});
+
+// ---------- 强制白名单：allowlist.txt 覆盖黑名单优先 ----------
+
+const mkSrc = (id, block = [], allow = [], raw = []) => ({
+  id,
+  name: id,
+  url: 'u',
+  homepage: 'h',
+  parsed: {
+    block,
+    allow,
+    raw,
+    skipped: {},
+    totalLines: block.length + allow.length + raw.length,
+    effective: block.length + allow.length + raw.length,
+  },
+});
+
+test('allowlist.txt 解析：注释、行内说明、三种写法、去重与非法条目', () => {
+  const { entries, errors, warnings } = parseAllowlist(
+    [
+      '! 整行注释',
+      '# 另一种注释',
+      '',
+      'dns.weixin.qq.com        # 微信 HTTPDNS',
+      '||mapi.m.jd.com^',
+      '@@||loggw.alipay.com^   # 日志网关',
+      'dns.weixin.qq.com', // 重复
+      'not a domain',
+      'qq.com', // 两段式整域放行 → 告警
+    ].join('\n')
+  );
+
+  assert.deepEqual(
+    entries.map((e) => [e.domain, e.reason]),
+    [
+      ['dns.weixin.qq.com', '微信 HTTPDNS'],
+      ['mapi.m.jd.com', ''],
+      ['loggw.alipay.com', '日志网关'],
+      ['qq.com', ''],
+    ]
+  );
+  assert.equal(errors.length, 1, '非法行必须报错，不能静默跳过');
+  assert.ok(errors[0].includes('第 8 行'));
+  assert.equal(warnings.length, 2, '重复 + 整域放行各一条告警');
+});
+
+test('强制白名单：同域屏蔽规则被删除，@@ 必定写入产物', () => {
+  const result = mergeSources(
+    [mkSrc('s1', [{ kind: 'block', domain: 'mapi.m.jd.com' }])],
+    { forcedAllow: ['mapi.m.jd.com'] }
+  );
+
+  assert.equal(result.block.length, 0, '屏蔽规则必须被移除，否则文件里自相矛盾');
+  assert.deepEqual(result.allow.map((a) => a.domain), ['mapi.m.jd.com']);
+  assert.equal(result.allow[0].forced, true);
+  assert.equal(result.stats.forcedAllow, 1);
+  assert.equal(result.stats.forcedAllowActive, 1);
+  assert.equal(result.stats.forcedBlockRemoved, 1);
+  assert.equal(result.stats.deadRules, 0, '同域既屏蔽又放行必须归零');
+
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.ok(out.includes('@@||mapi.m.jd.com^'));
+  assert.ok(
+    !/^\|\|mapi\.m\.jd\.com\^$/m.test(out),
+    '屏蔽侧必须整条消失，而不是留着当死规则'
+  );
+  assert.deepEqual(verifyRenderedRules(out, result.raw).bad, []);
+});
+
+test('强制白名单：父域放行时，其下所有屏蔽子域一并移除', () => {
+  const result = mergeSources(
+    [
+      mkSrc('s1', [
+        { kind: 'block', domain: 'dns.weixin.qq.com' },
+        { kind: 'block', domain: 'x.dns.weixin.qq.com' },
+        { kind: 'block', domain: 'ad.qq.com' },
+      ]),
+    ],
+    { forcedAllow: ['dns.weixin.qq.com'] }
+  );
+
+  assert.deepEqual(result.block.map((b) => b.domain), ['ad.qq.com'], '只放行目标域名，不误伤无关域名');
+  // x.dns.weixin.qq.com 先被父子域收敛吃掉，真正走到「强制白名单」这一步的只有 1 条
+  assert.equal(result.stats.forcedBlockRemoved, 1);
+  assert.equal(isSelfOrSubdomain('x.dns.weixin.qq.com', 'dns.weixin.qq.com'), true);
+  assert.equal(isSelfOrSubdomain('notdns.weixin.qq.com', 'dns.weixin.qq.com'), false);
+});
+
+test('强制白名单不受「黑名单优先」约束，且不被上游白名单重复渲染', () => {
+  // 上游 @@ 会因与黑名单冲突被剔除；同一条目写进 allowlist.txt 后必须活下来
+  const result = mergeSources(
+    [
+      mkSrc('s1', [{ kind: 'block', domain: 'ads.privacy.qq.com' }], [
+        { kind: 'allow', domain: 'ads.privacy.qq.com' },
+      ]),
+    ],
+    { forcedAllow: ['ads.privacy.qq.com'] }
+  );
+
+  assert.equal(result.stats.allowDropped, 0, '强制白名单不参与剔除判定');
+  assert.equal(result.allow.length, 1, '同域只能出现一条 @@');
+  assert.equal(result.allow[0].forced, true);
+  assert.equal(result.block.length, 0);
+
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.equal(out.match(/@@\|\|ads\.privacy\.qq\.com\^/g).length, 1);
+});
+
+test('强制白名单覆盖到 $important 屏蔽规则也能清掉（否则 @@ 压不过它）', () => {
+  const result = mergeSources(
+    [mkSrc('s1', [{ kind: 'block', domain: 'a.example.com', important: true }])],
+    { forcedAllow: ['a.example.com'] }
+  );
+  assert.equal(result.block.length, 0);
+  assert.equal(result.stats.forcedBlockRemoved, 1);
+});
+
+test('仓库自带 allowlist.txt 能通过校验，且每条都是合法域名', () => {
+  const { entries, errors, warnings } = loadAllowlist(new URL('../allowlist.txt', import.meta.url));
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+  assert.ok(entries.length >= 30, '常见 App 的误杀项应当成规模收录');
+  for (const e of entries) {
+    assert.ok(e.domain.includes('.'), `${e.domain} 必须是域名`);
+  }
+  // 关键误杀项必须在内：少任何一条都意味着微信/QQ/京东会复发
+  for (const must of [
+    'dns.weixin.qq.com',
+    'dns.jd.com',
+    'mapi.m.jd.com',
+    'configsvr.msf.3g.qq.com',
+    'loggw.alipay.com',
+    'images.pinduoduo.com',
+  ]) {
+    assert.ok(entries.some((e) => e.domain === must), `allowlist.txt 缺少 ${must}`);
+  }
 });

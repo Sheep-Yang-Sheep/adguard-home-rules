@@ -86,6 +86,15 @@ export function subsumeByParent(domains) {
 }
 
 /**
+ * 域名 d 是否等于 parent 或位于 parent 之下
+ * @param {string} d
+ * @param {string} parent
+ */
+export function isSelfOrSubdomain(d, parent) {
+  return d === parent || d.endsWith(`.${parent}`);
+}
+
+/**
  * 判断一条通配规则是否已被某个父域屏蔽规则完整覆盖
  * 仅处理 `||...^` 且不带 `$` 修饰符的规则；`@@` 例外规则不参与
  */
@@ -216,8 +225,16 @@ export function badfilterTargets(rawRules) {
 
 /**
  * @param {Array<{id:string,name:string,url:string,homepage:string,upstream?:string,parsed:object}>} sources
+ * @param {{forcedAllow?:string[]}} [options]
+ *   forcedAllow 来自项目根目录的 allowlist.txt：无条件放行，且会把它覆盖到的屏蔽规则从产物中移除。
+ *   与上游自带的 `@@` 例外不同，它不参与「黑名单优先」的剔除判定。
  */
-export function mergeSources(sources) {
+export function mergeSources(sources, options = {}) {
+  const forcedAllow = new Set(
+    (options.forcedAllow || [])
+      .map((d) => String(d).trim().toLowerCase())
+      .filter(Boolean)
+  );
   /** @type {Map<string,{important:boolean,count:number}>} */
   const blockMap = new Map();
   /** @type {Map<string,{sources:Set<string>,important:boolean}>} 只对 200 多条例外规则记来源，成本可忽略 */
@@ -283,10 +300,33 @@ export function mergeSources(sources) {
   }
   const { keep, removed, protectedHits } = subsumeByParent(subsumeCandidates);
 
-  const finalBlock = [
+  const mergedBlock = [
     ...keep.map((d) => ({ domain: d, important: false })),
     ...pinnedDomains.map((d) => ({ domain: d, important: blockMap.get(d)?.important || false })),
   ];
+
+  // 强制白名单覆盖到的屏蔽规则直接删除。
+  // 只留一条 @@||d^ 也能生效（例外优先于普通屏蔽规则），但产物里会同时出现
+  // 「屏蔽 d」和「放行 d」两条自相矛盾的规则，还会被体检统计成「不生效的屏蔽规则」。
+  // 直接删掉屏蔽侧，文件里就只剩一条明确意图，且 deadRules 能保持为 0。
+  let forcedBlockRemoved = 0;
+  const forcedAllowActive = new Set();
+  const finalBlock = [];
+  for (const item of mergedBlock) {
+    let hit = null;
+    for (const allowDomain of forcedAllow) {
+      if (isSelfOrSubdomain(item.domain, allowDomain)) {
+        hit = allowDomain;
+        break;
+      }
+    }
+    if (hit) {
+      forcedBlockRemoved += 1;
+      forcedAllowActive.add(hit);
+    } else {
+      finalBlock.push(item);
+    }
+  }
 
   // 排序保证同内容生成同结果，避免无谓的 diff
   finalBlock.sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
@@ -294,7 +334,9 @@ export function mergeSources(sources) {
 
   // 黑名单优先：与黑名单有任何交集的白名单整条剔除。
   // 必须在父子域收敛之后再判，否则会被「已被收敛掉的屏蔽规则」误伤。
+  // 强制白名单不走这条判定（它的域名已从 finalBlock 里删掉，留着重复条目只会重复渲染）。
   const allowCandidates = [...allowMap.entries()]
+    .filter(([domain]) => !forcedAllow.has(domain))
     .map(([domain, meta]) => ({ domain, important: meta.important }))
     .sort((a, b) => (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0));
   const allowPrune = pruneBlockedAllows(
@@ -302,7 +344,13 @@ export function mergeSources(sources) {
     allowCandidates.map((a) => a.domain)
   );
   const droppedAllowSet = new Set(allowPrune.dropped.map((d) => d.domain));
-  const finalAllow = allowCandidates.filter((a) => !droppedAllowSet.has(a.domain));
+  const forcedEntries = [...forcedAllow]
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .map((domain) => ({ domain, important: false, forced: true }));
+  const finalAllow = [
+    ...forcedEntries,
+    ...allowCandidates.filter((a) => !droppedAllowSet.has(a.domain)),
+  ];
 
   // 这些屏蔽规则原本被白名单架空，剔除白名单后重新生效 —— 量化出来才能看到策略的收益
   const shadowRestored = droppedAllowSet.size
@@ -375,6 +423,10 @@ export function mergeSources(sources) {
       allowDroppedByReason: allowPrune.byReason,
       // 剔除白名单后重新生效的屏蔽规则条数
       shadowRestored,
+      // 项目级强制白名单（allowlist.txt）：条目数、真正命中过屏蔽规则的条目数、因此删掉的屏蔽规则数
+      forcedAllow: forcedAllow.size,
+      forcedAllowActive: forcedAllowActive.size,
+      forcedBlockRemoved,
       allowShadowed: shadowed.count,
       allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,

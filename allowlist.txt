@@ -1,0 +1,98 @@
+! ============================================================================
+! 项目级强制白名单（allowlist.txt）
+!
+! 这里列出的域名 = 无条件放行。与上游 @@ 例外的区别：
+!   1. 不受「黑名单优先」约束：与黑名单有任何交集也不会被剔除；
+!   2. 覆盖到的屏蔽规则会从产物里直接删掉，不留下「写了但不生效」的死规则；
+!   3. 本文件由人工维护，合并脚本只读不写，自动任务不会覆盖它。
+!
+! 收录标准（只放「拦了就会坏功能」的域名，不放纯广告/纯埋点）：
+!   - 连接与解析链路：HTTPDNS、MSF 长连接、网络自检            → 拦了表现为「无网络连接」
+!   - 登录 / 授权 / API 网关：拦了表现为登不上、掉登录态、接口全挂
+!   - 日志上报网关：拦了会让客户端无限重试、缓冲区堆积        → 表现为异常耗电
+!   - 资源 CDN：拦了表现为图片/内容空白
+!
+! 写入格式：一行一个域名，支持 domain / ||domain^ / @@||domain^ 三种写法，
+! `#` 之后是行内说明，`!` 或 `#` 开头的整行是注释。合并时会做域名合法性校验，
+! 有非法条目直接让整轮合并失败（避免白名单写错了却静默不生效）。
+! ============================================================================
+
+! ============================== 微信 ==============================
+# HTTPDNS：微信靠它解析自家的接入点。被拦后部分网络环境下不会回退到本地 DNS，
+# 直接判定「无网络连接」——这是微信/QQ 报无网络时最常见的一条。
+dns.weixin.qq.com              # 微信 HTTPDNS 主入口（多源同时屏蔽：217heidai / hagezi / cat）
+dns.weixin.qq.com.cn           # 微信 HTTPDNS 备用域名（217heidai / anti-AD / cat）
+aedns.weixin.qq.com            # 微信 AE-DNS，下发 CDN 与接入点，拦了消息通道解析失败
+# 长连接接入点：被拦后消息通道反复重连，表现为「连接中」「无网络」、消息延迟
+szlong.weixin.qq.com           # 微信深圳长连接接入点（hagezi）
+# 日志网关：拦了不会立刻报错，而是把日志堆在本地无限重试 → 后台耗电
+log.weixin.qq.com              # 微信日志上报（217heidai / hagezi）
+
+! ============================== QQ ==============================
+# MSF 是 QQ / 微信共用的长连接框架，客户端启动时先向 configsvr 取接入点列表。
+# 这两个域名一旦解析失败，QQ 会在网络正常的情况下直接显示「无网络连接」。
+configsvr.msf.3g.qq.com        # MSF 配置服务器（anti-AD）
+openmsf.3g.qq.com              # MSF 开放接入点，登录与推送握手用（anti-AD）
+# wtlogin 是 QQ 登录协议，这两个是它的日志通道；被拦会让登录阶段反复重试
+log.wtlogin.qq.com             # QQ 登录日志（217heidai / hagezi）
+log1.wtlogin.qq.com            # QQ 登录日志备用（217heidai / hagezi / cat）
+# 广告隐私设置页本身不是广告，上游原本已 @@ 放行，却被本项目的「黑名单优先」剔除
+ads.privacy.qq.com             # QQ 广告隐私设置入口（hagezi 屏蔽，被上游白名单纠正后又被丢弃）
+
+! ============================== 支付宝 ==============================
+# 网络自检：支付宝用它做链路探测，被拦会误判「网络异常」并反复弹重试
+tracert.alipay.com             # 支付宝链路探测（hagezi）
+# 日志网关：客户端把所有日志合并上传，被拦后整批重试、堆积在本地
+loggw.alipay.com               # 日志网关主入口（217heidai / cat）
+loggw-ex.alipay.com            # 日志网关扩展入口（217heidai / cat）
+loggw-exsdk.alipay.com         # SDK 日志网关（217heidai / cat）
+loggw.alipay.com.cn            # 日志网关备用域名（217heidai / cat）
+loggw.alipaydns.com            # 日志网关的 DNS 变体，客户端按解析结果轮换（217heidai / hagezi / cat）
+openmonitor.alipay.com         # 客户端监控/崩溃上报，被拦后批量重试（217heidai / hagezi / cat）
+# mPaaS 网关：支付宝小程序、以及大量银行/政务 App 的登录与接口都走这里
+mgw.mpaas.cn-hangzhou.aliyuncs.com  # mPaaS 移动网关（QY）
+
+! ==================== 阿里系（淘宝 / 天猫 / 高德共用）====================
+# HTTPDNS：淘宝、支付宝、高德共用阿里 HTTPDNS。拦了之后弱网环境拿不到接入点，
+# 客户端只能反复重试，表现为「网络不给力」「登录失败」。
+httpdns.alicdn.com             # 阿里 HTTPDNS 服务端（217heidai / cat）
+httpdns-api.aliyuncs.com       # 阿里 HTTPDNS API（217heidai / cat）
+httpdns-sc.aliyuncs.com        # 阿里 HTTPDNS 调度（217heidai / hagezi / cat）
+# 网关与 SDK 初始化：这几条被拦，淘宝授权登录在第三方 App 内直接失败
+acs.wapa.taobao.com            # MTOP 无线 API 网关（anti-AD）
+acs4baichuan.m.taobao.com      # 百川开放平台 API，第三方 App 内淘宝授权登录（217heidai / hagezi / anti-AD / cat）
+sdkinit.taobao.com             # 阿里 SDK 初始化，失败则授权/登录 SDK 不可用（217heidai / anti-AD / cat）
+audid-api.taobao.com           # 设备标识服务，被拦会被风控判为环境异常 → 掉登录态（217heidai / cat）
+
+! ============================== 京东 ==============================
+# mapi 是京东 App 的主 API 网关，拦了等于把 App 的绝大多数接口掐断，
+# 表现为「网络开小差」、登录态丢失、下单失败——这是本合集里影响最大的一条误杀。
+mapi.m.jd.com                  # 京东 App 主 API 网关（217heidai / hagezi / anti-AD / cat）
+dns.jd.com                     # 京东 HTTPDNS（217heidai / hagezi / anti-AD / cat）
+log.jd.com                     # 京东日志上报（217heidai / hagezi / cat）
+mllog.jd.com                   # 京东移动端日志（217heidai / hagezi / anti-AD / cat）
+xlog.jd.com                    # 京东统一日志通道（qy / 217heidai / hagezi / anti-AD / cat）
+
+! ======================= 美团 / 大众点评 =======================
+httpdns.meituan.com            # 美团 HTTPDNS（217heidai / hagezi / cat）
+report.meituan.com             # 美团日志上报（217heidai / hagezi / anti-AD / cat）
+hreport.meituan.com            # 美团 Hybrid/H5 日志上报（217heidai / hagezi）
+catfront.dianping.com          # 大众点评前端监控，被拦后批量重试（217heidai / hagezi / anti-AD / cat）
+
+! ============================== 百度地图 ==============================
+# 百度系 App 的 HTTPDNS，拦了之后域名解析绕回本地 DNS，
+# 在运营商 DNS 被污染的网络里就是「网络不可用」，登录与 POI 请求一起失败。
+httpdns.baidu.com              # 百度 HTTPDNS（217heidai / cat）
+httpsdns.baidu.com             # 百度 HTTPS DNS（217heidai / hagezi / cat）
+httpdns.baidubce.com           # 百度云 HTTPDNS 入口（217heidai / hagezi / cat）
+itsdata.map.baidu.com          # 实时路况数据接口，属功能接口而非广告（需自行确认是否保留）
+
+! ============================== 高德地图 ==============================
+apsrgeo.amap.com               # 逆地理编码/定位服务，地图与周边搜索的核心依赖（217heidai / hagezi / cat）
+amap-aos-info-nogw.amap.com    # AOS 服务信息与接入点下发（qy / 217heidai / hagezi / anti-AD）
+logs.amap.com                  # 高德日志上报（217heidai / hagezi / anti-AD / cat）
+dualstack-logs.amap.com        # 高德日志上报（IPv6/双栈）（217heidai / hagezi / anti-AD / cat）
+
+! ============================== 拼多多 ==============================
+# images 是商品图片 CDN，不是广告位。拦了之后商品图整片空白，列表页基本不可用。
+images.pinduoduo.com           # 拼多多商品图 CDN（217heidai / hagezi / cat）

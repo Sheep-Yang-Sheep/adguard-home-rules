@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchText, mapLimit } from './network.js';
 import { parseList } from './parser.js';
 import { mergeSources } from './merger.js';
+import { loadAllowlist } from './allowlist.js';
 import { evaluateSourceGate, forceFromEnv } from './gate.js';
 import {
   beijingNow,
@@ -245,7 +246,19 @@ async function main() {
   }
 
   log(`\n[2/4] 解析完成（上游 ${okUpstreams.size}/${totalUpstreams.size}），开始合并`);
-  const result = mergeSources(parsedSources);
+
+  // 项目级强制白名单：无条件放行，不参与「黑名单优先」。
+  // 校验失败就整轮退出——白名单写错了如果静默跳过，等于误杀照旧但表面上「已修复」。
+  const allowlist = loadAllowlist(path.join(ROOT, 'allowlist.txt'));
+  if (allowlist.errors.length) {
+    log('[ABORT] allowlist.txt 校验失败：');
+    for (const e of allowlist.errors) log(`        ${e}`);
+    process.exit(1);
+  }
+  for (const w of allowlist.warnings) log(`  [WARN] allowlist.txt ${w}`);
+  log(`      强制白名单 ${n(allowlist.domains.length)} 条（allowlist.txt，不受黑名单优先约束）`);
+
+  const result = mergeSources(parsedSources, { forcedAllow: allowlist.domains });
 
   const s = result.stats;
   log(
@@ -259,6 +272,10 @@ async function main() {
     )} · 父域覆盖 ${n((s.allowDroppedByReason || {})['under-block'] || 0)} · 解开黑名单子域 ${n(
       (s.allowDroppedByReason || {})['shadows-block'] || 0
     )}）· 恢复生效的屏蔽规则 ${n(s.shadowRestored)} 条 · 解析丢弃 ${n(s.skippedTotal)} 行`
+  );
+  log(
+    `      强制白名单: ${n(s.forcedAllow)} 条，其中 ${n(s.forcedAllowActive)} 条命中上游屏蔽，` +
+      `已从屏蔽区移除 ${n(s.forcedBlockRemoved)} 条规则`
   );
 
   const distPath = path.join(ROOT, repo.file);
@@ -278,6 +295,15 @@ async function main() {
   if (bad.length) {
     log('[ABORT] 产物自检未通过，以下行不是合法规则：');
     for (const line of bad) log(`        ${line}`);
+    process.exit(1);
+  }
+
+  // 强制白名单必须逐条出现在产物里。渲染逻辑将来若被改坏（例如删掉整个白名单分区），
+  // 合并结果自检未必能发现——少了 @@ 规则仍然是合法规则，但误杀会原样回归。
+  const missingAllow = allowlist.domains.filter((d) => !newRules.includes(`@@||${d}^`));
+  if (missingAllow.length) {
+    log('[ABORT] 强制白名单未写入产物，以下域名缺失：');
+    for (const d of missingAllow) log(`        ${d}`);
     process.exit(1);
   }
 

@@ -113,6 +113,20 @@ export function renderRules(result, ctx) {
   out.push(
     `! 实际不生效的屏蔽规则合计: ${n(stats.deadRules ?? 0)}（应为 0；不为 0 说明白名单优先逻辑有漏判）`
   );
+  if (stats.forcedAllow) {
+    out.push('!');
+    out.push(
+      `! 【强制白名单】allowlist.txt 无条件放行 ${n(stats.forcedAllow)} 个域名（不受「黑名单优先」约束）`
+    );
+    out.push(
+      `!   其中 ${n(stats.forcedAllowActive ?? 0)} 个原本被上游屏蔽，已从屏蔽区移除，共移除屏蔽规则 ${n(
+        stats.forcedBlockRemoved ?? 0
+      )} 条`
+    );
+    out.push(
+      `!   ${n((stats.forcedAllow ?? 0) - (stats.forcedAllowActive ?? 0))} 个上游本就没拦，保留作为后续变更的保险`
+    );
+  }
   if (stats.badfilterKept) {
     out.push(`! 因 $badfilter 点名而保留、未参与父子域收敛的规则: ${n(stats.badfilterKept)}`);
   }
@@ -145,8 +159,23 @@ export function renderRules(result, ctx) {
   out.push('! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。');
   out.push('');
 
-  out.push('! ============ 白名单例外规则（已剔除与黑名单冲突的条目）============');
-  for (const a of allow) out.push(a.important ? `@@||${a.domain}^$important` : `@@||${a.domain}^`);
+  const forced = allow.filter((a) => a.forced);
+  const upstreamAllow = allow.filter((a) => !a.forced);
+
+  if (forced.length) {
+    out.push(
+      `! ============ 强制白名单（allowlist.txt · ${forced.length} 条 · 不受「黑名单优先」约束）============`
+    );
+    out.push('! 这些域名是「拦了就会坏功能」的误杀项：HTTPDNS / 长连接 / API 网关 / 日志网关。');
+    out.push('! 对应的屏蔽规则已从下方屏蔽区整条移除，所以这里不会出现同域既屏蔽又放行。');
+    for (const a of forced) out.push(`@@||${a.domain}^`);
+    out.push('');
+  }
+
+  out.push('! ============ 上游白名单例外规则（已剔除与黑名单冲突的条目）============');
+  for (const a of upstreamAllow) {
+    out.push(a.important ? `@@||${a.domain}^$important` : `@@||${a.domain}^`);
+  }
   out.push('');
 
   out.push('! ============ 通配与特殊规则 ============');
@@ -246,6 +275,9 @@ export function renderReadme(result, ctx) {
     '{{ALLOW_DROPPED_UNDER}}': n((stats.allowDroppedByReason || {})['under-block'] || 0),
     '{{ALLOW_DROPPED_SHADOW}}': n((stats.allowDroppedByReason || {})['shadows-block'] || 0),
     '{{SHADOW_RESTORED}}': n(stats.shadowRestored ?? 0),
+    '{{FORCED_ALLOW}}': n(stats.forcedAllow ?? 0),
+    '{{FORCED_ACTIVE}}': n(stats.forcedAllowActive ?? 0),
+    '{{FORCED_BLOCK_REMOVED}}': n(stats.forcedBlockRemoved ?? 0),
     '{{CONFLICTS}}': n(stats.conflicts),
     '{{IMPORTANT_OVER_ALLOW}}': n(stats.importantOverAllow),
     '{{DEAD_RULES}}': n(stats.deadRules ?? 0),
@@ -294,6 +326,10 @@ export function renderStatus(result, ctx) {
         allowDropped: stats.allowDropped ?? 0,
         allowDroppedByReason: stats.allowDroppedByReason || {},
         shadowRestored: stats.shadowRestored ?? 0,
+        // 项目级强制白名单（allowlist.txt）
+        forcedAllow: stats.forcedAllow ?? 0,
+        forcedAllowActive: stats.forcedAllowActive ?? 0,
+        forcedBlockRemoved: stats.forcedBlockRemoved ?? 0,
         allowShadowed: stats.allowShadowed,
         conflicts: stats.conflicts,
         importantOverAllow: stats.importantOverAllow,

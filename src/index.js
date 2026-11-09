@@ -277,6 +277,9 @@ async function main() {
     `      强制白名单: ${n(s.forcedAllow)} 条，其中 ${n(s.forcedAllowActive)} 条命中上游屏蔽，` +
       `已从屏蔽区移除 ${n(s.forcedBlockRemoved)} 条规则`
   );
+  log(
+    `      保留正则规则 ${n(s.regexKept || 0)} 条（App 内广告位形如「广告标签.App 域名」，只有正则能覆盖）`
+  );
 
   const distPath = path.join(ROOT, repo.file);
   const readmePath = path.join(ROOT, 'README.md');

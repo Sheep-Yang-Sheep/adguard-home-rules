@@ -26,7 +26,71 @@ const NETWORK_PREFIX_RE = /^(?:\|\||@@)/;
 // AdGuard Home 在 DNS 层能够真正生效的修饰符
 const DNS_SAFE_MODIFIERS = new Set(['important']);
 // 这些修饰符必须连同原规则整体保留，不能只留域名
-const KEEP_AS_RAW_MODIFIERS = /^(badfilter|client|ctag|denyallow|dnsrewrite)/;
+// `dnstype` 收窄「只拦 A/AAAA 还是连 CNAME 一起拦」，剥掉会从「拦一部分」变成「全拦」，
+// 只能原样透传；它属于 AdGuard Home 官方文档列出的 DNS 级修饰符。
+const KEEP_AS_RAW_MODIFIERS = /^(badfilter|client|ctag|denyallow|dnsrewrite|dnstype)/;
+
+/**
+ * 正则规则的修饰符白名单。
+ *
+ * AdGuard Home 的约定是「遇到不认识的修饰符，整条规则作废」，所以这里不能放行任意修饰符：
+ * 只有官方文档列出的 DNS 级修饰符才随正则一起透传。
+ */
+const REGEX_SAFE_MODIFIERS = new Set([
+  'important',
+  'dnstype',
+  'denyallow',
+  'badfilter',
+  'client',
+  'ctag',
+]);
+
+// `/pattern/` 或 `/pattern/$mod1,mod2`。pattern 取到最后一个 `/`，修饰符部分只允许
+// `$name` / `$name=value` 这类形式，避免把 `||a.com/x/y` 这种路径规则误判成正则
+const REGEX_RULE_RE = /^\/(.+)\/((?:\$[a-z]+(?:=[^,]*)?(?:,[a-z]+(?:=[^,]*)?)*)?)$/;
+
+/**
+ * 解析 `/regex/` 正则规则
+ *
+ * 为什么必须保留：上游里有几十条形如 `/^guanggao\./`、`/^adservice\./`、`/^admaster\./`
+ * 的「标签前缀」规则，它们拦的不是某个固定域名，而是 `<广告标签>.<任意域名>` ——
+ * 典型受害者就是贴吧、酷安这类用自家子域做广告位的 App（广告位域名随版本变化，
+ * 任何域名清单都写不出来，只有正则能覆盖）。
+ *
+ * 项目最初一律丢弃正则规则，理由是「几十万条正则会拖死软路由」。但上游实际只有
+ * 50～60 条，这点开销可以忽略；而丢掉它们会得到一份「域名规则一条不少、App 内广告
+ * 却全回来」的清单 —— 单独订阅上游能拦住、订阅合并结果拦不住，根因就在这里。
+ *
+ * `@@/regex/` 例外不保留：正则之间是否有交集无法静态判定，保留就可能把别的源的屏蔽
+ * 规则整片解开，与本项目「黑名单优先」的策略冲突（上游目前也没有这类规则）。
+ */
+function parseRegexRule(text) {
+  const m = REGEX_RULE_RE.exec(text);
+  if (!m) return { kind: 'skip', reason: 'regex' };
+  const [, pattern, modifierText] = m;
+  if (!pattern) return { kind: 'skip', reason: 'regex' };
+
+  // 语法预检：AdGuard Home 用 Go 的 RE2，JS 能编译通过的正则它基本也认；
+  // 编译不过的说明上游这一行本身就是坏的，留着只会让整条规则被 AdGuard Home 忽略
+  try {
+    // eslint-disable-next-line no-new
+    new RegExp(pattern);
+  } catch {
+    return { kind: 'skip', reason: 'regex' };
+  }
+
+  // RE2 不支持环视与反向引用，这类模式 AdGuard Home 会整条忽略 —— 与其带进产物，
+  // 不如现在就丢掉，免得「规则在文件里、日志里却一次都没命中」
+  if (/\(\?<?[=!]|\\[1-9]/.test(pattern)) return { kind: 'skip', reason: 'regex' };
+
+  if (modifierText) {
+    const modifiers = modifierText.slice(1).split(',').filter(Boolean);
+    const bad = modifiers.some((mod) => !REGEX_SAFE_MODIFIERS.has(mod.split('=')[0]));
+    if (bad) return { kind: 'skip', reason: 'regex-modifier' };
+  }
+
+  return { kind: 'raw', rule: text };
+}
 
 /**
  * 只描述「请求上下文」的修饰符：是否第三方、来自哪个 App。
@@ -152,6 +216,13 @@ export function parseLine(input) {
 
   if (line.startsWith('!') || line.startsWith('[')) return { kind: 'skip', reason: 'comment' };
 
+  // 正则规则要在注释截断之前处理：`/^ad[!#]\./` 这类模式本身就带 `!` / `#`，
+  // 先截断会把一条好好的正则切成半截。`@@/regex/` 例外按「黑名单优先」整条丢弃。
+  if (line.startsWith('/') || line.startsWith('@@/')) {
+    if (line.startsWith('@@/')) return { kind: 'skip', reason: 'regex-allow' };
+    return parseRegexRule(line);
+  }
+
   // 个别上游源存在把 `!` 注释拼接到规则行尾的瑕疵，截断之
   const bang = line.indexOf('!');
   if (bang > 0) {
@@ -207,8 +278,7 @@ export function parseLine(input) {
   }
   if (line.startsWith('||')) return parseNetworkRule(line.slice(2), false);
 
-  // `/regex/` 在 DNS 过滤器里每条规则都要跑一次正则，几十万条会拖死软路由，默认不收录
-  if (line.startsWith('/')) return { kind: 'skip', reason: 'regex' };
+  // `/regex/` 已在函数开头统一处理（要赶在注释截断之前），走到这里说明不是正则
   // `|http://` 锚定 URL 规则在 DNS 层无效
   if (line.startsWith('|')) return { kind: 'skip', reason: 'url-anchor' };
 

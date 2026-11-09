@@ -17,9 +17,18 @@ import { normalizeDomain } from './parser.js';
  *   @@||example.com^
  *   example.com   # 行内说明
  * `!` 或 `#` 开头的整行为注释。
+ *
+ * 裸二级域（如 `deepl.com`）会连带放行全部子域，默认只告警；确认要整域放行时，
+ * 在行尾注释里写明「整域放行」，告警即消失，CI 才会放行这一条。
  */
 
 const DOMAIN_LIKE = /^(?:@@)?\|*[^\s]+$/;
+
+// 裸二级域（`deepl.com`）等于整站连同全部子域一起放行，绝大多数情况是笔误
+// （把 `qq.com` 写进来会一口气放掉几十万条子域规则），所以默认只告警。
+// 但确实存在「整个域名都是自家服务」的单用途站点，这类条目应当在行尾注释里
+// 写明「整域放行」，把一条被动告警变成人工确认过的决定。
+const APEX_CONFIRM = /整域放行|allow[-_ ]?apex/i;
 
 /**
  * @param {string} text allowlist.txt 全文
@@ -69,8 +78,12 @@ export function parseAllowlist(text) {
 
       // 只写两段式注册域名等于把整站及其全部子域一起放行（例如 qq.com 会放掉
       // 几十万条子域规则），几乎一定是写错了，必须显式提醒。
-      if (domain.split('.').length < 3) {
-        warnings.push(`第 ${lineNo} 行是整域放行，会连带放行全部子域：${domain}`);
+      // 行尾注释里写明「整域放行」视为已确认，不再告警。
+      if (domain.split('.').length < 3 && !APEX_CONFIRM.test(reason)) {
+        warnings.push(
+          `第 ${lineNo} 行是整域放行，会连带放行全部子域：${domain}` +
+            '（确认无误请在行尾注释写明「整域放行」）'
+        );
       }
 
       entries.push({ domain, reason, line: lineNo });

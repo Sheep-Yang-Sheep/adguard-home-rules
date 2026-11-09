@@ -129,8 +129,35 @@ test('注释与元素隐藏规则被丢弃', () => {
   assert.equal(parseLine('[Adblock Plus 2.0]').kind, 'skip');
 });
 
-test('正则与路径规则被丢弃', () => {
-  assert.equal(parseLine('/^.+stat\\.kugou\\.com/').reason, 'regex');
+test('正则规则必须原样保留（App 内广告位只能靠它覆盖）', () => {
+  // `/^guanggao\./` 拦的是「广告标签.任意域名」，域名清单写不出这类广告位；
+  // 丢掉它就会重现「单独订阅能拦、合并后拦不住」的问题
+  const r = parseLine('/^guanggao\\./');
+  assert.equal(r.kind, 'raw');
+  assert.equal(r.rule, '/^guanggao\\./');
+
+  const stat = parseLine('/^.+stat\\.kugou\\.com/');
+  assert.equal(stat.kind, 'raw');
+
+  // 带 AdGuard Home 认识的 DNS 级修饰符时，正则 + 修饰符要一起保留
+  const dnstype = parseLine('/^adservice\\./$dnstype=A');
+  assert.equal(dnstype.kind, 'raw');
+  assert.equal(dnstype.rule, '/^adservice\\./$dnstype=A');
+
+  // 正则里合法出现 `!` / `#` 时不能被当成注释截断
+  const bangHash = parseLine('/^ad[!#]\\./');
+  assert.equal(bangHash.kind, 'raw');
+  assert.equal(bangHash.rule, '/^ad[!#]\\./');
+
+  // 语法编译不过、或带 DNS 层无效修饰符的正则，整条丢弃（AdGuard Home 也会整条忽略）
+  assert.equal(parseLine('/^ad[/').reason, 'regex');
+  assert.equal(parseLine('/^ads\\./$popup').reason, 'regex-modifier');
+
+  // `@@` 正则例外无法静态判定交集，按「黑名单优先」整条剔除
+  assert.equal(parseLine('@@/^ad\\./').reason, 'regex-allow');
+});
+
+test('路径与 URL 锚定规则被丢弃', () => {
   assert.equal(parseLine('||api.zhihu.com/ad-style-service').reason, 'path');
   assert.equal(parseLine('|http://example.com/ad').reason, 'url-anchor');
 });
@@ -881,6 +908,26 @@ test('强制白名单覆盖到 $important 屏蔽规则也能清掉（否则 @@ �
   );
   assert.equal(result.block.length, 0);
   assert.equal(result.stats.forcedBlockRemoved, 1);
+});
+
+test('裸二级域必须写明确认标记才算整域放行，否则只告警', () => {
+  const warned = parseAllowlist('example.com\n');
+  assert.deepEqual(warned.errors, []);
+  assert.equal(warned.warnings.length, 1);
+  assert.match(warned.warnings[0], /整域放行/);
+
+  // 行尾注释写明「整域放行」= 已确认，不再告警，但条目照常生效
+  const confirmed = parseAllowlist('example.com   # 整域放行：官方全站\n');
+  assert.deepEqual(confirmed.errors, []);
+  assert.deepEqual(confirmed.warnings, []);
+  assert.equal(confirmed.entries.length, 1);
+  assert.equal(confirmed.entries[0].domain, 'example.com');
+
+  // allow-apex 同义，方便英文注释习惯
+  assert.deepEqual(parseAllowlist('example.com  # allow-apex\n').warnings, []);
+
+  // 三段式域名本来就不该告警，写不写标记都一样
+  assert.deepEqual(parseAllowlist('a.example.com\n').warnings, []);
 });
 
 test('仓库自带 allowlist.txt 能通过校验，且每条都是合法域名', () => {

@@ -362,6 +362,10 @@ export function mergeSources(sources, options = {}) {
 
   const sortedRaw = [...rawMap.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
+  // 正则规则（`/^guanggao\./` 之类）是 App 内广告位的唯一覆盖手段，单独计数，
+  // 便于在产物头部一眼看到「这一轮到底保留了多少条」，也方便上游突变时报警
+  const regexKept = sortedRaw.filter((rule) => rule.startsWith('/')).length;
+
   // 通配类规则（如 `||*-sdk.rum.aliyuncs.com^`）若其尾部父域已被屏蔽，
   // 匹配目标必然是父域的子域，同样属于冗余，可安全剔除
   const finalRaw = [];
@@ -413,6 +417,8 @@ export function mergeSources(sources, options = {}) {
       blockUnique,
       allowUnique,
       rawUnique,
+      // 保留的正则规则条数（App 内广告位形如 `<广告标签>.<App 域名>`，只有正则能覆盖）
+      regexKept,
       subsumeRemoved: removed.length,
       rawCovered,
       // 命中共享后缀保护、因而没被父域吞掉的子域规则条数

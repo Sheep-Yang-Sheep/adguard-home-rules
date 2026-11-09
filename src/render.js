@@ -31,7 +31,9 @@ const SKIP_LABELS = {
   'element-hide': '元素隐藏规则',
   path: '带路径的 URL 规则',
   'no-anchor': '缺少 ^ 锚定的域名规则',
-  regex: '正则规则',
+  regex: '语法非法的正则规则',
+  'regex-allow': '正则例外规则（黑名单优先）',
+  'regex-modifier': '带 DNS 层无效修饰符的正则规则',
   'url-anchor': '|http:// 锚定规则',
   'unsupported-modifier': 'DNS 层无效修饰符',
   'invalid-domain': '非法域名/IP',
@@ -133,6 +135,11 @@ export function renderRules(result, ctx) {
   if (stats.sharedSuffixKept) {
     out.push(`! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: ${n(stats.sharedSuffixKept)}`);
   }
+  if (stats.regexKept) {
+    out.push(
+      `! 保留的正则规则: ${n(stats.regexKept)}（App 内广告位形如 <广告标签>.<App 域名>，只有正则可以覆盖）`
+    );
+  }
   if (stats.skippedTotal) {
     const detail = Object.entries(stats.skipped)
       .sort((a, b) => b[1] - a[1])
@@ -178,7 +185,7 @@ export function renderRules(result, ctx) {
   }
   out.push('');
 
-  out.push('! ============ 通配与特殊规则 ============');
+  out.push('! ============ 通配、正则与特殊规则 ============');
   for (const r of raw) out.push(r);
   out.push('');
 
@@ -269,6 +276,7 @@ export function renderReadme(result, ctx) {
     '{{BLOCK}}': n(result.block.length),
     '{{ALLOW}}': n(result.allow.length),
     '{{RAW}}': n(result.raw.length),
+    '{{REGEX_KEPT}}': n(stats.regexKept ?? 0),
     '{{SHADOWED}}': n(stats.allowShadowed),
     '{{ALLOW_DROPPED}}': n(stats.allowDropped ?? 0),
     '{{ALLOW_DROPPED_SAME}}': n((stats.allowDroppedByReason || {})['same-domain'] || 0),

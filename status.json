@@ -1,16 +1,16 @@
 {
-  "updatedAtBeijing": "2026-11-09 08:59",
-  "runAtBeijing": "2026-11-09 08:59",
-  "updatedAtUtc": "2026-11-09T00:59:56.882Z",
-  "runAtUtc": "2026-11-09T00:59:56.882Z",
+  "updatedAtBeijing": "2026-11-09 11:01",
+  "runAtBeijing": "2026-11-09 11:01",
+  "updatedAtUtc": "2026-11-09T03:01:54.425Z",
+  "runAtUtc": "2026-11-09T03:01:54.425Z",
   "upstreams": 5,
-  "before": 775525,
-  "after": 364632,
+  "before": 775584,
+  "after": 364691,
   "subsumeRemoved": 20917,
   "rawCovered": 71,
   "block": 364014,
   "allow": 211,
-  "raw": 407,
+  "raw": 466,
   "allowDropped": 134,
   "allowDroppedByReason": {
     "same-domain": 43,
@@ -27,20 +27,18 @@
   "deadRules": 0,
   "badfilterKept": 0,
   "sharedSuffixKept": 3,
-  "skippedTotal": 160,
+  "skippedTotal": 101,
   "skipped": {
     "comment": 44,
     "path": 3,
-    "invalid-domain": 54,
-    "regex": 58,
-    "unsupported-modifier": 1
+    "invalid-domain": 54
   },
   "failedSources": [],
   "sources": {
     "qy": 566,
     "217heidai": 241854,
-    "antiad": 96888,
+    "antiad": 96920,
     "hagezi": 225344,
-    "cat": 210873
+    "cat": 210900
   }
 }

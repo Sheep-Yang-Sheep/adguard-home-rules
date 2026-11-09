@@ -3,21 +3,21 @@
 ! Homepage: https://github.com/Sheep-Yang-Sheep/adguard-home-rules
 !
 ! ================= 更新时间 =================
-! 本合集更新时间（北京时间 UTC+8）: 2026-11-09 08:59
+! 本合集更新时间（北京时间 UTC+8）: 2026-11-09 11:01
 ! 说明: 以上时间仅在规则内容实际发生变化时刷新；无变化时不重写本文件。
 !
 ! ================= 规则统计 =================
-! 合并前规则数（各上游合计，含重复）: 775,525
-! 去重后规则数: 385,754
+! 合并前规则数（各上游合计，含重复）: 775,584
+! 去重后规则数: 385,813
 !   其中屏蔽规则去重后: 384,974
 !   其中白名单例外去重后: 302
-!   其中通配/特殊规则去重后: 478
+!   其中通配/特殊规则去重后: 537
 ! 被父域规则覆盖而移除的冗余规则: 20,988
 !   其中子域规则: 20,917 · 通配规则: 71
-! 合并后规则数: 364,632
+! 合并后规则数: 364,691
 !   其中屏蔽规则: 364,014
 !   其中白名单例外: 211
-!   其中通配/特殊规则: 407
+!   其中通配/特殊规则: 466
 ! 白名单例外去重后共 302 条，其中 134 条因与黑名单冲突被执行「黑名单优先」剔除
 !
 ! ================= 体检报告 =================
@@ -29,7 +29,8 @@
 !   其中 43 个原本被上游屏蔽，已从屏蔽区移除，共移除屏蔽规则 43 条
 !   1 个上游本就没拦，保留作为后续变更的保险
 ! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: 3
-! 解析阶段丢弃 160 行: 正则规则 58 · 非法域名/IP 54 · 注释 44 · 带路径的 URL 规则 3 · DNS 层无效修饰符 1
+! 保留的正则规则: 58（App 内广告位形如 <广告标签>.<App 域名>，只有正则可以覆盖）
+! 解析阶段丢弃 101 行: 非法域名/IP 54 · 注释 44 · 带路径的 URL 规则 3
 !
 ! ================= 上游订阅源（5 个地址 / 5 个独立上游）=================
 ! 1. QY Ads Rule
@@ -47,11 +48,11 @@
 ! 4. anti-AD
 !    https://anti-ad.net/easylist.txt
 !    主页 https://anti-ad.net/
-!    本次解析有效规则 96,888 条
+!    本次解析有效规则 96,920 条
 ! 5. cat
 !    https://gp.adrules.top/dns.txt
 !    主页 https://github.com/Cats-Team/AdRules
-!    本次解析有效规则 210,873 条
+!    本次解析有效规则 210,900 条
 !
 ! 规则版权归各上游作者所有，本仓库仅做合并整理，仅供个人学习研究使用。
 
@@ -272,7 +273,65 @@
 @@||wwwimage-tve.cbsstatic.com^
 @@||x2.ifengimg.com^
 
-! ============ 通配与特殊规则 ============
+! ============ 通配、正则与特殊规则 ============
+/^(\S+\.)?(webstats?|swebstats?|mywebstats?)\./
+/^(\S+\.)?11599[\da-z]{2,20}\.com$/
+/^(\S+\.)?5551[0-9]{3}\.com?$/
+/^(\S+\.)?61677[\da-z]{0,20}\.com$/
+/^(\S+\.)?777\-?partners?\.(net|com)$/
+/^(\S+\.)?9377[a-z0-9]{2}\.com$/$dnstype=A
+/^(\S+\.)?[0-9a-f]{15,}\.com$/
+/^(\S+\.)?[0-9a-z]{16,}\.xyz$/
+/^(\S+\.)?[c-s]ads(abs|abz|ans|anz|ats|atz|del|ecs|ecz|ims|imz|ips|ipz|kis|kiz|oks|okz|one|pms|pmz)\.com/
+/^(\S+\.)?ad(s?[\d]+|m|s)?\.[0-9\-a-z]+\./$denyallow=nucdn.net|azureedge.net|alibabacorp.com|alibabadns.com
+/^(\S+\.)?adservice\.google\./
+/^(\S+\.)?advert/$denyallow=alibabacorp.com|alibabadns.com|sm.cn|tanx.com|alibaba-inc.com|tmall.com|taobao.com
+/^(\S+\.)?affiliat(es?[0-9a-z]*?|ion[0-9\-a-z]*?|ly[0-9a-z\-]*?)\./
+/^(\S+\.)?afgr[\d]{1,2}\.com$/
+/^(\S+\.)?aj[0-9]{4,}.online$/
+/^(\S+\.)?analytics(\-|\.)/
+/^(\S+\.)?counter(\-|\.)/
+/^(\S+\.)?delivery([\d]{2}|dom|modo).com$/
+/^(\S+\.)?e7[0-9]{2,4}\.(net|com)?$/
+/^(\S+\.)?g[1-4][0-9]{8,9}\.com?$/
+/^(\S+\.)?hg[0-9]{4,5}\.com?$/
+/^(\S+\.)?pixels?\./
+/^(\S+\.)?s?metrics\./
+/^(\S+\.)?sax[\dns]?\.sina\.com\.cn/
+/^(\S+\.)?syma[a-z]\.cn$/
+/^(\S+\.)?tongji\./
+/^(\S+\.)?toolbar\./
+/^(\S+\.)?voyage-prive\.[a-z]+(\.uk)?$/
+/^(\S+\.)?widgets?\./
+/^(\S+\.)?xpj[0-9]\.net$/
+/^(\S+\.)?ylx-[0-9].com$/
+/^.+stat\.kugou\.com/
+/^admarvel\./
+/^admaster\./
+/^adsage\./
+/^adsensor\./
+/^adservice\./
+/^adsmogo\./
+/^adsrvmedia\./
+/^adsserving\./
+/^adsystem\./
+/^adwords\./
+/^applovin\./
+/^appsflyer\./
+/^domob\./
+/^duomeng\./
+/^dwtrack\./
+/^guanggao\./
+/^omgmta\./
+/^omgmtaw\./
+/^omniture\./
+/^openx\./
+/^partnerad\./
+/^pingfore\./
+/^socdm\./
+/^supersonicads\./
+/^wlmonitor\./
+/^zjtoolbar\./
 @@||profile*.se.360.cn^
 @@||tongji.*kuwo.cn^
 ||*-ad-sign.byteimg.com^
@@ -287,6 +346,7 @@
 ||*googleadsserving.cn^
 ||*mistat*.xiaomi.com^
 ||*pangolin*toutiao*.com^
+||*serror*.wo.com.cn^$dnstype=A|CNAME
 ||*stun.kugou.com^
 ||*tsdk.vivo.com.cn^
 ||*two-gun-volley.pages.dev^

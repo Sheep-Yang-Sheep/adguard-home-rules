@@ -41,23 +41,23 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-16 14:10` 周一
-- **上次自动任务运行时间（北京时间）**：`2026-11-16 14:10`
+- **本合集更新时间（北京时间）**：`2026-11-17 02:21` 周二
+- **上次自动任务运行时间（北京时间）**：`2026-11-17 02:21`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 789,312 |
-| 去重后规则数 | 400,588 |
-| 被父域规则覆盖而移除的冗余规则 | 21,792 |
-| **合并后规则数** | **378,661** |
-| └ 屏蔽规则 | 377,985 |
-| └ 白名单例外 `@@` | 210 |
+| 合并前规则数（各上游合计，含重复） | 790,652 |
+| 去重后规则数 | 403,501 |
+| 被父域规则覆盖而移除的冗余规则 | 21,849 |
+| **合并后规则数** | **381,514** |
+| └ 屏蔽规则 | 380,841 |
+| └ 白名单例外 `@@` | 207 |
 | └ 通配 / 特殊规则 | 466 |
-| 白名单因与黑名单冲突而失效（已剔除） | 135 |
-| └ 同域既屏蔽又放行 | 43 |
+| 白名单因与黑名单冲突而失效（已剔除） | 138 |
+| └ 同域既屏蔽又放行 | 46 |
 | └ 白名单位于被屏蔽父域之下 | 89 |
 | └ 白名单解开了黑名单里的子域 | 3 |
-| 因剔除白名单而恢复生效的屏蔽规则 | 8 |
+| 因剔除白名单而恢复生效的屏蔽规则 | 9 |
 | **强制白名单条目（`allowlist.txt`）** | **44** |
 | └ 其中命中上游屏蔽、已移除对应屏蔽规则 | 43（移除 43 条） |
 | **实际不生效的屏蔽规则合计** | **0** |
@@ -76,9 +76,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | --- | --- | --- | --- |
 | 1 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
 | 2 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
-| 3 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 238,185 |
+| 3 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 241,180 |
 | 4 | anti-AD | https://anti-ad.net/easylist.txt | 96,508 |
-| 5 | cat | https://gp.adrules.top/dns.txt | 212,199 |
+| 5 | cat | https://gp.adrules.top/dns.txt | 210,544 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 
@@ -130,7 +130,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 - 部分 App **后台异常耗电**（日志网关被拦，日志堆在本地无限重试）
 - 拼多多商品图、高德定位、百度实时路况等**功能直接失效**
 
-上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 135 条），所以修不回来。
+上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 138 条），所以修不回来。
 
 ### 5.1 它是什么
 

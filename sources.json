@@ -18,6 +18,12 @@
       "url": "https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt",
       "homepage": "https://github.com/rssvcn/qy-Ads-Rule"
     },
+        {
+      "id": "cat",
+      "name": "cats",
+      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
+      "homepage": "https://github.com/Cats-Team/AdRules"
+    },
     {
       "id": "217heidai",
       "name": "217heidai 广告过滤合并规则",

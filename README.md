@@ -1,6 +1,6 @@
 # AdGuard Home 合并规则合集
 
-把 5 个独立上游（5 个订阅地址）的广告 / 追踪域名规则，合并成**一个** `.txt` 文件，每 **4 小时**自动更新一次，软路由只需订阅一条链接。
+把 5 个独立上游（6 个订阅地址）的广告 / 追踪域名规则，合并成**一个** `.txt` 文件，每 **4 小时**自动更新一次，软路由只需订阅一条链接。
 
 规则主体全部来自各上游作者，本仓库只做抓取、去重、父子域收敛与格式化；唯一的人工增删是根目录里的 `allowlist.txt`（强制白名单，见[第五节](#五强制白名单allowlisttxt)）。
 
@@ -41,16 +41,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-18 22:16` 周三
-- **上次自动任务运行时间（北京时间）**：`2026-11-18 22:16`
+- **本合集更新时间（北京时间）**：`2026-11-19 00:49` 周四
+- **上次自动任务运行时间（北京时间）**：`2026-11-19 00:49`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 802,000 |
-| 去重后规则数 | 413,911 |
-| 被父域规则覆盖而移除的冗余规则 | 21,662 |
-| **合并后规则数** | **392,111** |
-| └ 屏蔽规则 | 391,438 |
+| 合并前规则数（各上游合计，含重复） | 802,432 |
+| 去重后规则数 | 414,087 |
+| 被父域规则覆盖而移除的冗余规则 | 21,648 |
+| **合并后规则数** | **392,301** |
+| └ 屏蔽规则 | 391,628 |
 | └ 白名单例外 `@@` | 207 |
 | └ 通配 / 特殊规则 | 466 |
 | 白名单因与黑名单冲突而失效（已剔除） | 138 |
@@ -75,10 +75,11 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | # | 源 | 订阅地址 | 本次有效规则 |
 | --- | --- | --- | --- |
 | 1 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 2 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
-| 3 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 252,576 |
-| 4 | anti-AD | https://anti-ad.net/easylist.txt | 95,688 |
-| 5 | cat | https://gp.adrules.top/dns.txt | 211,316 |
+| 2 | cats | https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt | 211,557 |
+| 3 | 217heidai 广告过滤合并规则 | https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt | 241,854 |
+| 4 | HaGeZi Multi PRO | https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt | 252,767 |
+| 5 | anti-AD | https://anti-ad.net/easylist.txt | 95,688 |
+| 6 | cat <sub>镜像</sub> | https://gp.adrules.top/dns.txt | 211,557 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
 
@@ -103,7 +104,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
    - `$third-party`、`$~first-party`、`$app=` 这类**只描述请求上下文**的修饰符会被剥掉、域名规则保留 —— DNS 过滤不区分 referrer 与 App，留着修饰符没有任何意义，但为了它丢掉整条规则就太亏了
    - `$popup`、`$document`、`$domain=`、`$removeparam` 这类会改变「对哪个域名、做哪种处理」的修饰符无法降级，带它们的整条规则会被丢弃（剥掉会把「限站点放行 / 只去参数」变成「全站硬屏蔽」）
    - `$important`、`$badfilter`、`$client`、`$denyallow` 等有效修饰符原样保留
-3. **跨源去重**：5 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
+3. **跨源去重**：6 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
    - 内容完全相同的镜像地址（同一份规则的两个入口）只计一次，不会让「合并前规则数」虚高
 4. **父子域收敛**：若 `||a.com^` 已被屏蔽，则 `||b.a.com^`、`||c.b.a.com^` 这类子域规则属于冗余（`||a.com^` 已覆盖全部子域），直接剔除。这一步通常能砍掉 3%～8% 的冗余条目。
    - 白名单例外 `@@` **只去重、不做父子域收敛**，避免连带误放行；随后由第 5 步单独判定是否该整条剔除
@@ -191,7 +192,7 @@ dns.weixin.qq.com        # 微信 HTTPDNS，拦了会显示「无网络连接」
 jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 ghfast.top / gh-proxy.com 通道。
 
 **Q：规则数量比上游加起来少很多，是不是漏了？**
-不是。5 个地址高度重叠，去重 + 父子域收敛后留存的都是有效规则，拦截效果不变而查询性能更好。少掉多少、为什么少，规则文件头部注释里都有明细。
+不是。6 个地址高度重叠，去重 + 父子域收敛后留存的都是有效规则，拦截效果不变而查询性能更好。少掉多少、为什么少，规则文件头部注释里都有明细。
 
 **Q：软路由性能吃紧怎么办？**
 本项目已剔除元素隐藏规则与 URL 路径规则（DNS 层无效），但保留了上游那几十条正则规则——App 内广告位只能靠它们。x86 软路由跑 30 万条域名规则 + 几十条正则几乎没有额外开销。若内存很紧张，可在 `sources.json` 的 `sources` 数组里删掉 `hagezi` / `cat` 后重新运行。

@@ -15,6 +15,10 @@
 ! 写入格式：一行一个域名，支持 domain / ||domain^ / @@||domain^ 三种写法，
 ! `#` 之后是行内说明，`!` 或 `#` 开头的整行是注释。合并时会做域名合法性校验，
 ! 有非法条目直接让整轮合并失败（避免白名单写错了却静默不生效）。
+!
+! 注：部分条目括号里标注了「收录时命中它的上游」。上游清单会随 sources.json 调整，
+! 这些标注只说明「当初为什么加它」，不保证现在还命中；白名单条目本身长期有效。
+! 当前上游：ADgk / AdGuard HostlistsRegistry filter_29 / QY / 217heidai / anti-AD。
 ! ============================================================================
 
 ! ============================== 微信 ==============================
@@ -24,9 +28,17 @@ dns.weixin.qq.com              # 微信 HTTPDNS 主入口（多源同时屏蔽�
 dns.weixin.qq.com.cn           # 微信 HTTPDNS 备用域名（217heidai / anti-AD / cat）
 aedns.weixin.qq.com            # 微信 AE-DNS，下发 CDN 与接入点，拦了消息通道解析失败
 # 长连接接入点：被拦后消息通道反复重连，表现为「连接中」「无网络」、消息延迟
-szlong.weixin.qq.com           # 微信深圳长连接接入点（hagezi）
+long.weixin.qq.com             # 微信长连接主入口，szlong/hklong 的通用域名
+short.weixin.qq.com            # 微信短连接，登录、拉取会话与消息同步
+szlong.weixin.qq.com           # 微信深圳长连接接入点（ADgk）
+szshort.weixin.qq.com          # 微信深圳短连接接入点
 # 日志网关：拦了不会立刻报错，而是把日志堆在本地无限重试 → 后台耗电
-log.weixin.qq.com              # 微信日志上报（217heidai / hagezi）
+log.weixin.qq.com              # 微信日志上报（217heidai）
+# 内容链路：拦了表现为公众号文章打不开、正文图片整片空白、微信内网页 JS 失效
+mp.weixin.qq.com               # 公众号文章与微信内登录入口
+mmbiz.qpic.cn                  # 公众号正文图片 CDN
+res.wx.qq.com                  # 微信 JS-SDK 资源，公众号内网页授权依赖它
+servicewechat.com              # 小程序平台服务域名 整域放行
 
 ! ============================== QQ ==============================
 # MSF 是 QQ / 微信共用的长连接框架，客户端启动时先向 configsvr 取接入点列表。
@@ -38,6 +50,13 @@ log.wtlogin.qq.com             # QQ 登录日志（217heidai / hagezi）
 log1.wtlogin.qq.com            # QQ 登录日志备用（217heidai / hagezi / cat）
 # 广告隐私设置页本身不是广告，上游原本已 @@ 放行，却被本项目的「黑名单优先」剔除
 ads.privacy.qq.com             # QQ 广告隐私设置入口（hagezi 屏蔽，被上游白名单纠正后又被丢弃）
+# 其余接入点：MSF 在 WiFi 与移动网络下走不同域名，只放行其中一条等于「换网就掉线」
+msfwifi.3g.qq.com              # MSF 的 WiFi 接入点，与 configsvr 配套
+tcpconn.tencent.com            # QQ 移动网络 TCP 长连接接入点
+tcpconn3.tencent.com           # 同上，备用接入点，按解析结果轮换
+# 聊天资源：拦了头像、聊天气泡图片、群图片变空白，消息本身能收发但界面等于坏掉
+imgcache.qq.com                # QQ 聊天图片缓存
+gchat.qpic.cn                  # QQ 群图片 CDN
 
 ! ============================== 支付宝 ==============================
 # 网络自检：支付宝用它做链路探测，被拦会误判「网络异常」并反复弹重试
@@ -51,6 +70,40 @@ loggw.alipaydns.com            # 日志网关的 DNS 变体，客户端按解析
 openmonitor.alipay.com         # 客户端监控/崩溃上报，被拦后批量重试（217heidai / hagezi / cat）
 # mPaaS 网关：支付宝小程序、以及大量银行/政务 App 的登录与接口都走这里
 mgw.mpaas.cn-hangzhou.aliyuncs.com  # mPaaS 移动网关（QY）
+
+! ====================== 微信支付 / 财付通 ======================
+# 微信支付在 App 内是「调起收银台再回调」，链路被拦的表现不是报错，
+# 而是停在「正在支付…」直到超时，用户会以为扣款失败而重复支付。
+wx.tenpay.com                  # 微信支付 H5/收银台入口
+payapp.weixin.qq.com           # 支付 SDK 调起与结果回跳
+tenpay.com                     # 财付通主域（商户、结算、网关） 整域放行
+
+! ======================== 云闪付 / 银联 ========================
+# 云闪付 App 的接口几乎全在 95516.com 下，子域随版本变动，只放行固定几条等于
+# 下个版本就复发，因此整域放行；代价是连同 ads./analytics. 两个埋点一起放开，
+# 与「支付不可用」相比这个取舍是值得的。
+95516.com                      # 银联/云闪付主域 整域放行
+unionpay.com                   # 银联国际与商户侧域名 整域放行
+
+! ==================== 银行 App（手机银行）====================
+# 手机银行被拦的典型表现：能打开登录页，但转账/余额/理财一直转圈或报「系统繁忙」，
+# 原因是埋点、风控、网关被一并拦掉。银行自己的域基本不含第三方广告，
+# 整域放行只损失个别埋点规则（工行 0 条、建行 2 条、招行 3 条），换来的是不会误杀。
+icbc.com.cn                    # 工商银行（含 m./ap. 手机银行接口）
+ccb.com                        # 建设银行 整域放行
+abchina.com                    # 农业银行 整域放行
+boc.cn                         # 中国银行 整域放行
+bankcomm.com                   # 交通银行 整域放行
+cmbchina.com                   # 招商银行（含 log./metric- 埋点） 整域放行
+psbc.com                       # 邮储银行 整域放行
+citicbank.com                  # 中信银行 整域放行
+cmbc.com.cn                    # 民生银行 整域放行
+cib.com.cn                     # 兴业银行 整域放行
+spdb.com.cn                    # 浦发银行 整域放行
+cebbank.com                    # 光大银行 整域放行
+hxb.com.cn                     # 华夏银行 整域放行
+cgbchina.com.cn                # 广发银行 整域放行
+bank.pingan.com                # 平安银行手机银行（不放行 pingan.com 整域，避免放开集团广告）
 
 ! ==================== 阿里系（淘宝 / 天猫 / 高德共用）====================
 # HTTPDNS：淘宝、支付宝、高德共用阿里 HTTPDNS。拦了之后弱网环境拿不到接入点，

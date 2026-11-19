@@ -13,40 +13,34 @@
   },
   "sources": [
     {
+      "id": "adgk",
+      "name": "ADgk 手机去广告规则",
+      "url": "https://cdn.jsdelivr.net/gh/banbendalao/ADgk@latest/ADgk.txt",
+      "homepage": "https://github.com/banbendalao/ADgk"
+    },
+    {
+      "id": "adguard-dns",
+      "name": "AdGuard HostlistsRegistry filter_29",
+      "url": "https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt",
+      "homepage": "https://github.com/AdguardTeam/HostlistsRegistry"
+    },
+    {
       "id": "qy",
       "name": "QY Ads Rule",
       "url": "https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt",
       "homepage": "https://github.com/rssvcn/qy-Ads-Rule"
     },
-        {
-      "id": "cat",
-      "name": "cats",
-      "url": "https://raw.githubusercontent.com/Cats-Team/AdRules/main/dns.txt",
-      "homepage": "https://github.com/Cats-Team/AdRules"
-    },
     {
       "id": "217heidai",
       "name": "217heidai 广告过滤合并规则",
-      "url": "https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockdns.txt",
+      "url": "https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt",
       "homepage": "https://github.com/217heidai/adblockfilters"
-    },
-    {
-      "id": "hagezi",
-      "name": "HaGeZi Multi PRO",
-      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt",
-      "homepage": "https://github.com/hagezi/dns-blocklists"
     },
     {
       "id": "antiad",
       "name": "anti-AD",
       "url": "https://anti-ad.net/easylist.txt",
       "homepage": "https://anti-ad.net/"
-    },
-    {
-      "id": "cat",
-      "name": "cat",
-      "url": "https://gp.adrules.top/dns.txt",
-      "homepage": "https://github.com/Cats-Team/AdRules"
     }
   ]
 }

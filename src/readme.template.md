@@ -150,8 +150,8 @@ dns.weixin.qq.com        # 微信 HTTPDNS，拦了会显示「无网络连接」
 
 | App | 放行的类型 | 典型域名 |
 | --- | --- | --- |
-| 微信 | HTTPDNS、长连接、日志网关 | `dns.weixin.qq.com`、`szlong.weixin.qq.com` |
-| QQ | MSF 接入点、登录日志、广告隐私设置页 | `configsvr.msf.3g.qq.com`、`openmsf.3g.qq.com` |
+| 微信 | HTTPDNS、长短连接、公众号内容链路、日志网关 | `dns.weixin.qq.com`、`long.weixin.qq.com`、`mp.weixin.qq.com`、`mmbiz.qpic.cn` |
+| QQ | MSF 接入点（WiFi / 移动网络分域名）、登录日志、聊天图片、广告隐私设置页 | `configsvr.msf.3g.qq.com`、`msfwifi.3g.qq.com`、`tcpconn.tencent.com`、`imgcache.qq.com` |
 | 支付宝 | 链路自检、日志网关、mPaaS 网关 | `tracert.alipay.com`、`loggw.alipay.com`、`mgw.mpaas.cn-hangzhou.aliyuncs.com` |
 | 淘宝 / 天猫 | HTTPDNS、MTOP/百川网关、SDK 初始化 | `httpdns.alicdn.com`、`acs.wapa.taobao.com`、`sdkinit.taobao.com` |
 | 京东 | 主 API 网关、HTTPDNS、日志 | `mapi.m.jd.com`、`dns.jd.com`、`xlog.jd.com` |
@@ -159,6 +159,9 @@ dns.weixin.qq.com        # 微信 HTTPDNS，拦了会显示「无网络连接」
 | 百度地图 | HTTPDNS、实时路况 | `httpsdns.baidu.com`、`itsdata.map.baidu.com` |
 | 高德 | 逆地理编码、服务信息、日志 | `apsrgeo.amap.com`、`amap-aos-info-nogw.amap.com` |
 | 拼多多 | 商品图 CDN | `images.pinduoduo.com` |
+| 微信支付 / 财付通 | 收银台、支付调起、财付通主域（整域） | `wx.tenpay.com`、`payapp.weixin.qq.com`、`tenpay.com` |
+| 云闪付 / 银联 | 主域整域放行（子域随版本变动） | `95516.com`、`unionpay.com` |
+| 手机银行 | 工行 / 建行 / 农行 / 中行 / 交行 / 招行 / 邮储 / 中信 / 民生 / 兴业 / 浦发 / 光大 / 华夏 / 广发 / 平安，主域整域放行 | `icbc.com.cn`、`ccb.com`、`cmbchina.com`、`bank.pingan.com` |
 
 被剔掉的仍然是真广告：`adashx.ut.*`、`simba.*`、`optimus-ads.*`、`mads.*`、`dspsdk.*`、`ta/th.pinduoduo.com` 之类一条没动。
 

@@ -1,14 +1,14 @@
 {
-  "updatedAtBeijing": "2026-11-21 20:29",
-  "runAtBeijing": "2026-11-21 20:29",
-  "updatedAtUtc": "2026-11-21T12:29:44.765Z",
-  "runAtUtc": "2026-11-21T12:29:44.765Z",
+  "updatedAtBeijing": "2026-11-22 04:55",
+  "runAtBeijing": "2026-11-22 04:55",
+  "updatedAtUtc": "2026-11-21T20:55:52.518Z",
+  "runAtUtc": "2026-11-21T20:55:52.518Z",
   "upstreams": 5,
-  "before": 569850,
-  "after": 294598,
-  "subsumeRemoved": 7010,
+  "before": 570391,
+  "after": 295140,
+  "subsumeRemoved": 7004,
   "rawCovered": 69,
-  "block": 293860,
+  "block": 294402,
   "allow": 257,
   "raw": 481,
   "allowDropped": 150,
@@ -44,9 +44,9 @@
   "failedSources": [],
   "sources": {
     "qy": 566,
-    "217heidai": 256993,
+    "217heidai": 257392,
     "antiad": 96597,
     "adgk": 3225,
-    "adguard-dns": 212469
+    "adguard-dns": 212611
   }
 }

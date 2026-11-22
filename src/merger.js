@@ -225,15 +225,22 @@ export function badfilterTargets(rawRules) {
 
 /**
  * @param {Array<{id:string,name:string,url:string,homepage:string,upstream?:string,parsed:object}>} sources
- * @param {{forcedAllow?:string[]}} [options]
+ * @param {{forcedAllow?:string[], forcedBlock?:string[]}} [options]
  *   forcedAllow 来自项目根目录的 allowlist.txt：无条件放行，且会把它覆盖到的屏蔽规则从产物中移除。
  *   与上游自带的 `@@` 例外不同，它不参与「黑名单优先」的剔除判定。
+ *   forcedBlock 来自项目根目录的 denylist.txt：无条件拦截，补充上游缺失的广告链路，
+ *   以 `$important` 输出并跳过父子域收敛，避免被将来的宽规则静默吞掉。
  */
 export function mergeSources(sources, options = {}) {
   const forcedAllow = new Set(
     (options.forcedAllow || [])
       .map((d) => String(d).trim().toLowerCase())
       .filter(Boolean)
+  );
+  const forcedBlock = new Set(
+    (options.forcedBlock || [])
+      .map((d) => String(d).trim().toLowerCase())
+      .filter((d) => d && !forcedAllow.has(d))
   );
   /** @type {Map<string,{important:boolean,count:number}>} */
   const blockMap = new Map();
@@ -311,8 +318,17 @@ export function mergeSources(sources, options = {}) {
   // 直接删掉屏蔽侧，文件里就只剩一条明确意图，且 deadRules 能保持为 0。
   let forcedBlockRemoved = 0;
   const forcedAllowActive = new Set();
+  // 上游是否提供过这个域名（哪怕随后被父子域收敛吃掉）—— 决定它在报告里算「已有」还是「补录」
+  const forcedBlockFromUpstream = new Set([...forcedBlock].filter((d) => blockMap.has(d)));
+  const forcedBlockAdded = new Set([...forcedBlock].filter((d) => !blockMap.has(d)));
   const finalBlock = [];
   for (const item of mergedBlock) {
+    // 强制黑名单优先：命中的域名一律以 $important 留在屏蔽区，既不被强制白名单删掉，
+    // 也不参与后面任何「宽松化」处理。上游本来就有的记一次命中，上游缺失的补在后面。
+    if (forcedBlock.has(item.domain)) {
+      finalBlock.push({ domain: item.domain, important: true });
+      continue;
+    }
     let hit = null;
     for (const allowDomain of forcedAllow) {
       if (isSelfOrSubdomain(item.domain, allowDomain)) {
@@ -326,6 +342,15 @@ export function mergeSources(sources, options = {}) {
     } else {
       finalBlock.push(item);
     }
+  }
+
+  // 上游一条都没有的强制黑名单域名，直接补进屏蔽区。这是本项目「补充拦截」的唯一入口：
+  // 京东联盟短链这类纯广告链路，5 个上游都不收（域名属于正规电商，拦了要担责任），
+  // 只能由人工清单补，否则广告点得动、跳得转。
+  const alreadyBlocked = new Set(finalBlock.map((b) => b.domain));
+  for (const domain of forcedBlock) {
+    if (alreadyBlocked.has(domain)) continue;
+    finalBlock.push({ domain, important: true });
   }
 
   // 排序保证同内容生成同结果，避免无谓的 diff
@@ -397,6 +422,8 @@ export function mergeSources(sources, options = {}) {
     block: finalBlock,
     allow: finalAllow,
     raw: finalRaw,
+    // 强制黑名单域名（已按字母序），供渲染层单独分区展示
+    forcedBlock: [...forcedBlock].sort(),
     sources: sources.map((s) => ({
       id: s.id,
       name: s.name,
@@ -433,6 +460,11 @@ export function mergeSources(sources, options = {}) {
       forcedAllow: forcedAllow.size,
       forcedAllowActive: forcedAllowActive.size,
       forcedBlockRemoved,
+      // 项目级强制黑名单（denylist.txt）：条目数、上游本来就拦的、需要人工补进来的
+      forcedBlock: forcedBlock.size,
+      forcedBlockFromUpstream: forcedBlockFromUpstream.size,
+      forcedBlockAdded: forcedBlockAdded.size,
+      forcedBlockSkipped: (options.forcedBlock || []).length - forcedBlock.size,
       allowShadowed: shadowed.count,
       allowShadowedSample: shadowed.sample,
       conflicts: conflicts.length,

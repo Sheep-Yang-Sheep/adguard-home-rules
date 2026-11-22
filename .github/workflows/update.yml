@@ -34,7 +34,7 @@ on:
   #     -H "Accept: application/vnd.github+json" \
   #     https://api.github.com/repos/<owner>/<repo>/dispatches \
   #     -d '{"event_type":"update-rules","client_payload":{"force":"false"}}'
-  # 详见 README「六、常见问题 · 说好每 4 小时更新」。
+  # 详见 README「七、常见问题 · 说好每 4 小时更新」。
   repository_dispatch:
     types: [update-rules]
   # 修改配置或代码后立即跑一次验证
@@ -43,6 +43,7 @@ on:
     paths:
       - 'sources.json'
       - 'allowlist.txt'
+      - 'denylist.txt'
       - 'src/**'
       - '.github/workflows/**'
 

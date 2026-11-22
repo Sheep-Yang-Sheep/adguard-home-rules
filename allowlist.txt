@@ -125,12 +125,23 @@ dns.jd.com                     # 京东 HTTPDNS（217heidai / hagezi / anti-AD /
 log.jd.com                     # 京东日志上报（217heidai / hagezi / cat）
 mllog.jd.com                   # 京东移动端日志（217heidai / hagezi / anti-AD / cat）
 xlog.jd.com                    # 京东统一日志通道（qy / 217heidai / hagezi / anti-AD / cat）
+# 注意：这里只放「拦了会坏功能」的主链路。京东的广告链路（联盟短链、点击归因、
+# 竞价/素材域）**不能**放进来，它们写在 denylist.txt 里强制拦截：
+# 贴吧信息流里的「京东好物」卡片之所以拦不住，就是因为上游一条都没收这些域，
+# 而白名单这边又没有任何机制能补上——补的入口是 denylist.txt，不是这里。
 
 ! ======================= 美团 / 大众点评 =======================
 httpdns.meituan.com            # 美团 HTTPDNS（217heidai / hagezi / cat）
 report.meituan.com             # 美团日志上报（217heidai / hagezi / anti-AD / cat）
 hreport.meituan.com            # 美团 Hybrid/H5 日志上报（217heidai / hagezi）
 catfront.dianping.com          # 大众点评前端监控，被拦后批量重试（217heidai / hagezi / anti-AD / cat）
+
+! ============================== 百度贴吧 ==============================
+# static 是贴吧的前端静态资源域（JS / CSS / 表情 / 头像图），和广告素材混在同一个域名下：
+# 217heidai 按「广告域」整域拦它，但 DNS 层无法区分 /tb/static-common/*.js 和广告图。
+# 拦掉的表现是贴吧网页版白屏、App 内 H5 页面（含首页热榜详情、活动页）加载不出来。
+# 与拼多多 images.pinduoduo.com 同一个取舍：共用域优先保功能，广告素材交给 HTTPS 层。
+static.tieba.baidu.com         # 贴吧前端静态资源（整域放行：内含广告素材，但拦了会白屏）
 
 ! ============================== 百度地图 ==============================
 # 百度系 App 的 HTTPDNS，拦了之后域名解析绕回本地 DNS，

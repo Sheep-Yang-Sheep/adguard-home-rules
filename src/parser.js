@@ -93,14 +93,15 @@ function parseRegexRule(text) {
 }
 
 /**
- * 只描述「请求上下文」的修饰符：是否第三方、来自哪个 App。
+ * 只描述「请求上下文」的修饰符：这条请求是不是第三方。
  *
- * DNS 过滤没有 referrer、没有 App 归属，这些修饰符对结果毫无影响，剥掉之后规则本体
- * （域名）依然成立。以前这里一律整条丢弃，和 README「剔除 DNS 层无效的修饰符」的说法
- * 正好相反：上游一旦混进 adblock 格式的规则，就会静默少掉一整批，而且只在统计里体现为
+ * DNS 过滤没有 referrer，这类修饰符对结果毫无影响，剥掉之后规则本体（域名）依然成立。
+ * 以前这里一律整条丢弃，和 README「剔除 DNS 层无效的修饰符」的说法正好相反：
+ * 上游一旦混进 adblock 格式的规则，就会静默少掉一整批，而且只在统计里体现为
  * 「DNS 层无效修饰符」几行字，很难发现是丢了整条规则。
  *
- * 注意 `$popup`、`$document`、`$domain=`、`$removeparam` 这类不在其列 —— 它们改变的是
+ * 注意 `$app=` 不属于这一类，它是作用域而不是上下文，见下面的 APP_SCOPED_MODIFIER。
+ * `$popup`、`$document`、`$domain=`、`$removeparam` 同理 —— 它们改变的是
  * 「对哪个域名、做哪种处理」，剥掉会把「限站点放行 / 只去参数」变成「全站屏蔽」，
  * 属于会改变拦截语义的修饰符，仍按不支持处理（整条丢弃才安全）。
  */
@@ -111,7 +112,28 @@ const IGNORABLE_MODIFIERS = new Set([
   '~first-party',
   'all',
 ]);
-const IGNORABLE_PREFIXES = ['app='];
+
+/**
+ * `$app=` 是**作用域**修饰符，不是上下文描述，绝不能剥。
+ *
+ * 它和 `$third-party` 长得很像，作用却完全相反：
+ *   `$third-party`   只是「这条请求是不是第三方」——剥掉之后规则本体（域名）该拦还是拦，
+ *                    最多是拦得比上游宽松一点点；
+ *   `$app=包名`      是「这条规则**只在某个 App 内**生效」——剥掉之后规则范围从
+ *                    「腾讯视频 App 内的 baidu.com」放大成「全世界所有设备的 baidu.com」。
+ *
+ * 实例（ADgk 第 7869 行）：`||baidu.com^$app=com.tencent.qqlive` 原本只是想在腾讯视频里
+ * 拦百度，剥成 `||baidu.com^` 之后等于把整个百度主域（含 tieba.baidu.com 的全部子域）
+ * 在 DNS 层直接 NXDOMAIN —— 贴吧 App 首页热榜就是这么消失的：主信息流还能靠 HTTPDNS
+ * 刷出来，热榜卡片那些走系统 DNS 的子请求全部解析失败，卡片整块空白。
+ * 同一批里还有 `||img1.360buyimg.com^$app=com.hunantv.imgo.activity` 这样的误杀
+ * （京东商品图 CDN 被全网拦掉），以及 `@@||c.data.mob.com^$app=...` 这样的全网放行。
+ *
+ * AdGuard Home 不支持 `$app=`，留着修饰符整条规则会被它忽略（看起来「没生效」），
+ * 剥掉修饰符又会放大成全网规则。两种都不行，唯一正确的处理是丢弃并计数——
+ * 让统计里出现「App 作用域规则 N 条」，而不是静默变成一条威力放大几百倍的脏规则。
+ */
+const APP_SCOPED_MODIFIER = /^app=/;
 
 /**
  * 域名归一化：小写、去首尾点、校验合法性、转 punycode
@@ -171,6 +193,13 @@ function parseNetworkRule(body, isAllow) {
     ? modifierText.split(',').map((m) => m.trim()).filter(Boolean)
     : [];
 
+  // `$app=` 先判：它限定「只在某个 App 内生效」，DNS 层无法表达这种作用域。
+  // 必须赶在 mustKeepRaw / 剥离逻辑之前，否则会被当成「上下文修饰符」剥掉，
+  // 把一条只在单个 App 内生效的规则放大成全网规则（详见 APP_SCOPED_MODIFIER 的说明）。
+  if (modifiers.some((m) => APP_SCOPED_MODIFIER.test(m))) {
+    return { kind: 'skip', reason: 'app-scoped' };
+  }
+
   const mustKeepRaw = modifiers.some((m) => KEEP_AS_RAW_MODIFIERS.test(m));
   if (mustKeepRaw) {
     return { kind: 'raw', rule: `${isAllow ? '@@' : ''}||${body}` };
@@ -178,9 +207,7 @@ function parseNetworkRule(body, isAllow) {
 
   const unknownModifiers = modifiers.filter((m) => !DNS_SAFE_MODIFIERS.has(m.split('=')[0]));
   if (unknownModifiers.length) {
-    const allIgnorable = unknownModifiers.every(
-      (m) => IGNORABLE_MODIFIERS.has(m) || IGNORABLE_PREFIXES.some((p) => m.startsWith(p))
-    );
+    const allIgnorable = unknownModifiers.every((m) => IGNORABLE_MODIFIERS.has(m));
     if (!allIgnorable) return { kind: 'skip', reason: 'unsupported-modifier' };
   }
 

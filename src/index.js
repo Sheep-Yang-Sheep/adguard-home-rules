@@ -8,6 +8,7 @@ import { fetchText, mapLimit } from './network.js';
 import { parseList } from './parser.js';
 import { mergeSources } from './merger.js';
 import { loadAllowlist } from './allowlist.js';
+import { loadDenylist } from './denylist.js';
 import { evaluateSourceGate, forceFromEnv } from './gate.js';
 import {
   beijingNow,
@@ -258,7 +259,31 @@ async function main() {
   for (const w of allowlist.warnings) log(`  [WARN] allowlist.txt ${w}`);
   log(`      强制白名单 ${n(allowlist.domains.length)} 条（allowlist.txt，不受黑名单优先约束）`);
 
-  const result = mergeSources(parsedSources, { forcedAllow: allowlist.domains });
+  // 项目级强制黑名单：补上游缺失的广告链路，与 allowlist 对称
+  const denylist = loadDenylist(path.join(ROOT, 'denylist.txt'));
+  if (denylist.errors.length) {
+    log('[ABORT] denylist.txt 校验失败：');
+    for (const e of denylist.errors) log(`        ${e}`);
+    process.exit(1);
+  }
+  for (const w of denylist.warnings) log(`  [WARN] denylist.txt ${w}`);
+
+  // 同一域名同时出现在两份清单里是配置错误：一个要求无条件放行、一个要求无条件拦截，
+  // 谁赢都是错的。直接让整轮失败，别让「拦不住」和「误放行」被静默地二选一。
+  const bothLists = denylist.domains.filter((d) => allowlist.domains.includes(d));
+  if (bothLists.length) {
+    log('[ABORT] 以下域名同时出现在 allowlist.txt 与 denylist.txt：');
+    for (const d of bothLists) log(`        ${d}`);
+    process.exit(1);
+  }
+  log(
+    `      强制黑名单 ${n(denylist.domains.length)} 条（denylist.txt，$important 输出、不参与父子域收敛）`
+  );
+
+  const result = mergeSources(parsedSources, {
+    forcedAllow: allowlist.domains,
+    forcedBlock: denylist.domains,
+  });
 
   const s = result.stats;
   log(
@@ -276,6 +301,11 @@ async function main() {
   log(
     `      强制白名单: ${n(s.forcedAllow)} 条，其中 ${n(s.forcedAllowActive)} 条命中上游屏蔽，` +
       `已从屏蔽区移除 ${n(s.forcedBlockRemoved)} 条规则`
+  );
+  log(
+    `      强制黑名单: ${n(s.forcedBlock ?? 0)} 条，其中上游已拦 ${n(
+      s.forcedBlockFromUpstream ?? 0
+    )} 条，人工补进屏蔽区 ${n(s.forcedBlockAdded ?? 0)} 条`
   );
   log(
     `      保留正则规则 ${n(s.regexKept || 0)} 条（App 内广告位形如「广告标签.App 域名」，只有正则能覆盖）`
@@ -307,6 +337,15 @@ async function main() {
   if (missingAllow.length) {
     log('[ABORT] 强制白名单未写入产物，以下域名缺失：');
     for (const d of missingAllow) log(`        ${d}`);
+    process.exit(1);
+  }
+
+  // 强制黑名单必须带 $important 出现：丢掉修饰符虽然还是合法规则，但会重新参与
+  // 父子域收敛、被将来的宽规则吃掉，等于这次修复白做。
+  const missingBlock = denylist.domains.filter((d) => !newRules.includes(`||${d}^$important`));
+  if (missingBlock.length) {
+    log('[ABORT] 强制黑名单未以 $important 写入产物，以下域名缺失：');
+    for (const d of missingBlock) log(`        ${d}`);
     process.exit(1);
   }
 

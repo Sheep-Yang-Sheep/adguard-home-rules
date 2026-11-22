@@ -36,6 +36,7 @@ const SKIP_LABELS = {
   'regex-modifier': '带 DNS 层无效修饰符的正则规则',
   'url-anchor': '|http:// 锚定规则',
   'unsupported-modifier': 'DNS 层无效修饰符',
+  'app-scoped': 'App 作用域规则（$app=，DNS 层无法表达）',
   'invalid-domain': '非法域名/IP',
   empty: '空行',
   comment: '注释',
@@ -132,6 +133,16 @@ export function renderRules(result, ctx) {
   if (stats.badfilterKept) {
     out.push(`! 因 $badfilter 点名而保留、未参与父子域收敛的规则: ${n(stats.badfilterKept)}`);
   }
+  if (stats.forcedBlock) {
+    out.push('!');
+    out.push(
+      `! 【强制黑名单】denylist.txt 无条件拦截 ${n(stats.forcedBlock)} 个域名（$important 输出，不参与父子域收敛）`
+    );
+    out.push(
+      `!   其中 ${n(stats.forcedBlockFromUpstream ?? 0)} 个上游本来就拦，` +
+        `${n(stats.forcedBlockAdded ?? 0)} 个是上游缺失、由人工清单补进来的`
+    );
+  }
   if (stats.sharedSuffixKept) {
     out.push(`! 父域是共享后缀（co.uk / github.io 等）而保留的子域规则: ${n(stats.sharedSuffixKept)}`);
   }
@@ -189,8 +200,23 @@ export function renderRules(result, ctx) {
   for (const r of raw) out.push(r);
   out.push('');
 
+  const forcedBlockList = result.forcedBlock || [];
+  const forcedBlockSet = new Set(forcedBlockList);
+  const upstreamBlock = forcedBlockSet.size ? block.filter((b) => !forcedBlockSet.has(b.domain)) : block;
+
+  if (forcedBlockList.length) {
+    out.push(
+      `! ============ 强制黑名单（denylist.txt · ${forcedBlockList.length} 条 · 上游缺失的广告链路）============`
+    );
+    out.push('! 这几个域上游 5 个源一致不收：域名属于正规电商，拦了要担责，于是广告点得动、跳得转。');
+    out.push('! 它们都是纯广告链路（联盟短链 / 点击归因 / CPS 推广），正常购物一次都不会经过。');
+    out.push('! 以 $important 输出：既不会被 @@ 例外压过，也不会被将来的宽父域规则静默吞掉。');
+    for (const d of forcedBlockList) out.push(`||${d}^$important`);
+    out.push('');
+  }
+
   out.push('! ============ 屏蔽规则（父域已覆盖的子域已剔除）============');
-  for (const item of block) out.push(item.important ? `||${item.domain}^$important` : `||${item.domain}^`);
+  for (const item of upstreamBlock) out.push(item.important ? `||${item.domain}^$important` : `||${item.domain}^`);
   out.push('');
 
   return out.join('\n');
@@ -286,6 +312,10 @@ export function renderReadme(result, ctx) {
     '{{FORCED_ALLOW}}': n(stats.forcedAllow ?? 0),
     '{{FORCED_ACTIVE}}': n(stats.forcedAllowActive ?? 0),
     '{{FORCED_BLOCK_REMOVED}}': n(stats.forcedBlockRemoved ?? 0),
+    '{{FORCED_BLOCK}}': n(stats.forcedBlock ?? 0),
+    '{{FORCED_BLOCK_UPSTREAM}}': n(stats.forcedBlockFromUpstream ?? 0),
+    '{{FORCED_BLOCK_ADDED}}': n(stats.forcedBlockAdded ?? 0),
+    '{{APP_SCOPED}}': n((stats.skipped || {})['app-scoped'] || 0),
     '{{CONFLICTS}}': n(stats.conflicts),
     '{{IMPORTANT_OVER_ALLOW}}': n(stats.importantOverAllow),
     '{{DEAD_RULES}}': n(stats.deadRules ?? 0),
@@ -338,6 +368,11 @@ export function renderStatus(result, ctx) {
         forcedAllow: stats.forcedAllow ?? 0,
         forcedAllowActive: stats.forcedAllowActive ?? 0,
         forcedBlockRemoved: stats.forcedBlockRemoved ?? 0,
+        // 项目级强制黑名单（denylist.txt）
+        forcedBlock: stats.forcedBlock ?? 0,
+        forcedBlockFromUpstream: stats.forcedBlockFromUpstream ?? 0,
+        forcedBlockAdded: stats.forcedBlockAdded ?? 0,
+        appScopedSkipped: (stats.skipped || {})['app-scoped'] || 0,
         allowShadowed: stats.allowShadowed,
         conflicts: stats.conflicts,
         importantOverAllow: stats.importantOverAllow,

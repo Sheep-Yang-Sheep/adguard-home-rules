@@ -54,12 +54,15 @@
 | 因剔除白名单而恢复生效的屏蔽规则 | {{SHADOW_RESTORED}} |
 | **强制白名单条目（`allowlist.txt`）** | **{{FORCED_ALLOW}}** |
 | └ 其中命中上游屏蔽、已移除对应屏蔽规则 | {{FORCED_ACTIVE}}（移除 {{FORCED_BLOCK_REMOVED}} 条） |
+| **强制黑名单条目（`denylist.txt`）** | **{{FORCED_BLOCK}}** |
+| └ 其中上游缺失、由人工补进屏蔽区 | {{FORCED_BLOCK_ADDED}} |
+| └ 上游 App 作用域规则（`$app=`，DNS 层无法表达，已丢弃） | {{APP_SCOPED}} |
 | **实际不生效的屏蔽规则合计** | **{{DEAD_RULES}}** |
 | 解析阶段丢弃的行（DNS 层无效） | {{SKIPPED_TOTAL}} |
 
 > 「本合集更新时间」只在规则内容真的发生变化时才刷新，「上次任务运行时间」由定时任务刷新，可据此判断自动任务是否正常。
 > 若「上次任务运行时间」超过 **12 小时**没动，说明自动任务真的停摆了，请到 Actions 页面查看失败原因。
-> GitHub 自带的 `schedule` 只是 best-effort，丢单并不罕见，本仓库因此挂了两条错开的定时 + 提供外部触发兜底，原因和补救办法见[第六节](#六常见问题)。
+> GitHub 自带的 `schedule` 只是 best-effort，丢单并不罕见，本仓库因此挂了两条错开的定时 + 提供外部触发兜底，原因和补救办法见[第七节](#七常见问题)。
 {{FAILED}}
 
 ---
@@ -88,7 +91,8 @@
    - 中文域名自动转 punycode
    - 剔除元素隐藏规则（`##`）与 URL 路径规则，这两类在 DNS 过滤里永远不会命中
    - **正则规则 `/regex/` 原样保留**（含上游 50～60 条形如 `/^guanggao\./`、`/^adservice\./` 的「广告标签前缀」规则）。它们拦的是 `<广告标签>.<App 自己的域名>` 这类动态广告位——贴吧、酷安等 App 内广告就靠它，域名清单永远写不出来。早期版本把正则一并丢掉，结果是「域名规则一条不少、App 内广告却全回来」
-   - `$third-party`、`$~first-party`、`$app=` 这类**只描述请求上下文**的修饰符会被剥掉、域名规则保留 —— DNS 过滤不区分 referrer 与 App，留着修饰符没有任何意义，但为了它丢掉整条规则就太亏了
+   - `$third-party`、`$~first-party` 这类**只描述请求上下文**的修饰符会被剥掉、域名规则保留 —— DNS 过滤不区分 referrer，留着修饰符没有任何意义，但为了它丢掉整条规则就太亏了
+   - **`$app=` 例外，必须整条丢弃**：它不是上下文而是**作用域**。`||baidu.com^$app=com.tencent.qqlive` 是「只在腾讯视频里拦百度」，剥掉修饰符就变成「全世界拦百度」——`||baidu.com^` 会把整个百度主域连同 `tieba.baidu.com` 的全部子域一起 NXDOMAIN，贴吧 App 首页热榜就是这么消失的；同一批里还有 `||img1.360buyimg.com^$app=...`（京东商品图被全网拦掉）。AdGuard Home 不支持 `$app=`，留着会被它整条忽略，剥掉会放大成全网规则，两种都错，所以丢弃并计数（本轮 {{APP_SCOPED}} 条）
    - `$popup`、`$document`、`$domain=`、`$removeparam` 这类会改变「对哪个域名、做哪种处理」的修饰符无法降级，带它们的整条规则会被丢弃（剥掉会把「限站点放行 / 只去参数」变成「全站硬屏蔽」）
    - `$important`、`$badfilter`、`$client`、`$denyallow` 等有效修饰符原样保留
 3. **跨源去重**：{{SOURCE_COUNT}} 个地址互相重叠极高，按域名去重，同一域名保留最强的那条（有 `$important` 的优先）。
@@ -157,6 +161,7 @@ dns.weixin.qq.com        # 微信 HTTPDNS，拦了会显示「无网络连接」
 | 京东 | 主 API 网关、HTTPDNS、日志 | `mapi.m.jd.com`、`dns.jd.com`、`xlog.jd.com` |
 | 美团 / 点评 | HTTPDNS、日志上报、前端监控 | `httpdns.meituan.com`、`report.meituan.com` |
 | 百度地图 | HTTPDNS、实时路况 | `httpsdns.baidu.com`、`itsdata.map.baidu.com` |
+| 百度贴吧 | 前端静态资源域（含广告素材，拦了会白屏） | `static.tieba.baidu.com` |
 | 高德 | 逆地理编码、服务信息、日志 | `apsrgeo.amap.com`、`amap-aos-info-nogw.amap.com` |
 | 拼多多 | 商品图 CDN | `images.pinduoduo.com` |
 | 微信支付 / 财付通 | 收银台、支付调起、财付通主域（整域） | `wx.tenpay.com`、`payapp.weixin.qq.com`、`tenpay.com` |
@@ -177,7 +182,49 @@ dns.weixin.qq.com        # 微信 HTTPDNS，拦了会显示「无网络连接」
 
 ---
 
-## 六、常见问题
+## 六、强制黑名单（`denylist.txt`）
+
+`allowlist.txt` 解决「拦错了」，`denylist.txt` 解决「该拦没拦」—— 两份清单是对称的，格式、校验、生效方式完全一致，只有方向相反。
+
+### 6.1 为什么需要它
+
+上游 5 个源都是**大而全的域名清单**，收的是广告平台的交易域与埋点域。有一类广告链路它们一致不碰：域名本身属于正规电商 / 大厂，拦掉要担责（可能误伤正常购物），于是干脆不收。
+
+结果是一种很别扭的状态：**广告请求已经被拦了，广告却还在** —— 因为让广告「点得动、跳得转、算得清」的那几条落地链路，一条规则都没有。
+
+典型是贴吧 / 微博 / 头条信息流里的「京东好物」卡片：
+
+| 链路环节 | 域名 | 上游是否收录 |
+| --- | --- | --- |
+| 广告请求（百度联盟下发） | `cpro.tieba.baidu.com`、`cpro.baidu.com` | 有 |
+| 素材图片 | `img*.360buyimg.com`（与正常商品图同一 CDN） | 无（共用域，没法只拦广告） |
+| 落地跳转 | `u.jd.com`（京东联盟短链） | **无** |
+| 点击归因 / 佣金 | `union.click.jd.com`、`cps.jd.com` | **无** |
+
+前两行属于「共用域」，DNS 层无法区分广告与正常内容，只能在 HTTPS 层处理；后两行是**纯广告链路，正常购物一次都不会经过**，拦它们零副作用 —— 但必须有人写进去，这就是 `denylist.txt` 的职责。
+
+### 6.2 它和父子域收敛的关系
+
+`denylist.txt` 里的每一条都以 `||域名^$important` 输出，**不参与父子域收敛**。这不是多余的保险，是踩过的坑：
+
+某个上游曾混进一条只在单个 App 内生效的宽规则，被错误地放大成 `||baidu.com^` 之后，几百条精确的百度广告子域（`mobads.baidu.com`、`cpro.baidu.com`、`pos.baidu.com`…）全部被判为「父域已覆盖」而剔除。宽规则一旦被修掉，这些精确规则本该回来；但只要收敛这一步还在，任何一条新的宽规则都能再把它们吃掉一次。用 `$important` 钉住，等于把这条路径堵死。
+
+### 6.3 优先级与冲突
+
+**denylist 优先于 allowlist。** 同一个域名同时出现在两份清单里属于配置错误，合并会直接中止并打印域名，不会静默二选一 —— 「拦不住」比「误放行」更难被发现，所以宁可报错。
+
+当前共 {{FORCED_BLOCK}} 条，其中 {{FORCED_BLOCK_UPSTREAM}} 条上游本来就拦（写进来是「钉住」，防将来的宽规则吞掉），{{FORCED_BLOCK_ADDED}} 条是上游完全缺失、由人工补进屏蔽区的。
+
+### 6.4 想更激进怎么办
+
+DNS 层能拦的只有域名。如果连素材图都要挡，只有两条路：
+
+1. 把图片 CDN 整域写进 `denylist.txt`（例如 `360buyimg.com`）—— **会连带废掉京东 App 的商品图**，不建议；
+2. 上行到 HTTPS 层：AdGuard Home 只做 DNS，拦不了同一域名下的 `?ad=` 请求；这种情况要用 AdGuard 客户端 / Surge / sing-box 之类的 URL 规则，或开启 AdGuard Home 的加密 DNS + 客户端证书过滤（代价是 CPU 与配置复杂度）。
+
+---
+
+## 七、常见问题
 
 **Q：为什么订阅链接偶尔更新滞后？**
 jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 ghfast.top / gh-proxy.com 通道。
@@ -201,6 +248,20 @@ jsDelivr 通道有 CDN 缓存，可能延迟数小时。要即时更新请用 gh
 原因是这类 App 的广告位不是固定域名，而是 `<广告标签>.<App 自己的域名>`：`guanggao.coolapk.com`、`adservice.tieba.baidu.com` 这一类的广告标签随版本变，任何域名清单都写不出来，上游只能靠 `/^guanggao\./`、`/^adservice\./`、`/^admaster\./`、`/^adgmta\./` 这样的**正则规则**去覆盖。早期版本为了省 CPU 把所有 `/regex/` 规则一律丢弃，而 `||域名^` 那一侧又是完整的并集——于是「域名规则一条不少、App 内广告却全回来」，且只影响这类靠标签式子域投广告的 App，非常难看出是规则类型被砍了。
 
 现在正则规则原样保留（并做了语法 / RE2 兼容性预检），`$dnstype` 这类 DNS 级修饰符也不再被当成「无效修饰符」丢掉。已经订阅的，等 AdGuard Home 更新一次列表，或在过滤器页面点「立即更新」即可生效。
+
+**Q：百度贴吧 App 首页热榜 / 推荐卡片整块消失了，是不是我订阅错了？**
+不是订阅的问题，是上游一条只在单个 App 内生效的宽规则被错误放大了：
+
+ADgk 里有一条 `||baidu.com^$app=com.tencent.qqlive`，本意是「只在腾讯视频里拦百度」。旧版本把 `$app=` 当成「请求上下文」剥掉，于是它变成 `||baidu.com^`——DNS 层直接把**整个百度主域**（含 `tieba.baidu.com` 的全部子域）判为不存在。贴吧的主信息流还能靠 HTTPDNS 自行解析刷出来，热榜卡片这类走系统 DNS 的子请求却全部 NXDOMAIN，表现就是「帖子能看、热榜没了」。
+
+现在这类 `$app=` 规则一律整条丢弃并计数（规则文件头部能看到「App 作用域规则 N 条」）。订阅更新后热榜即恢复，不用清缓存。
+
+**Q：贴吧帖子之间那种「京东购物」广告还在，规则里明明有 `im-x.jd.com`？**
+因为那条广告不走 `im-x.jd.com`。它是**百度联盟**投放的原生广告：请求由 `cpro.tieba.baidu.com` 一类百度域下发，素材落在京东图床 `img*.360buyimg.com`（和正常商品图同一个 CDN），落地页走京东联盟短链 `u.jd.com`。
+
+三段里，`img*.360buyimg.com` 属于共用域，DNS 层分不出广告图和商品图；`u.jd.com` / `union.click.jd.com` / `cps.jd.com` 是纯广告链路、拦了没有副作用，但 5 个上游**一条都不收**（域名属于正规电商）。所以本仓库新增了 [`denylist.txt`](denylist.txt) 强制拦截这几条链路 —— 广告点不动、归因不成立。
+
+剩下的「卡片本身还在显示」是 DNS 过滤的边界：广告数据跟帖子列表一起下发，图片在共用 CDN 上，域名清单拦不掉。要彻底去掉只能上 HTTPS 层（见[第六节](#六强制黑名单denylisttxt)）。
 
 **Q：某个网站上游明明放行了，我这里还是被拦？**
 上游的 `@@` 例外走「黑名单优先」：只要别的源屏蔽了这个域名（或它的父域/子域），那条例外就被剔除了。要长期放行，把它写进 `allowlist.txt`（见[第五节](#五强制白名单allowlisttxt)）；只给自己这台设备放行，可以在 AdGuard Home 的**自定义过滤规则**里加 `@@||站点域名^`，它的优先级高于订阅列表。
@@ -244,18 +305,18 @@ curl -X POST \
 
 ---
 
-## 七、本地运行
+## 八、本地运行
 
 ```bash
 # 需要 Node.js >= 20，无第三方依赖，不需要 npm install
-npm test                                  # 单元测试（含 allowlist.txt 校验）
+npm test                                  # 单元测试（含 allowlist.txt / denylist.txt 校验）
 node src/index.js                         # 在线抓取并合并（会写 dist / README / status）
 node src/index.js --dry-run               # 只跑不写文件
 npm run cache                             # 抓一次并把各源原文存到 .cache/（不写 dist）
 npm run build:offline                     # 断网复盘：只用 .cache/ 里的原文重新生成
 ```
 
-强制白名单在 `allowlist.txt`，改完直接跑 `npm test && node src/index.js` 即可看到效果；条目写错会让整轮合并失败并打印行号。
+人工清单有两份：`allowlist.txt`（强制放行）与 `denylist.txt`（强制拦截）。改完直接跑 `npm test && node src/index.js` 即可看到效果；条目写错会让整轮合并失败并打印行号，同一个域名同时出现在两份清单里也会直接中止。
 
 `--cache=DIR` 保存的是**本轮实际拿到的原文**（可能来自镜像），因此离线复盘出来的结果
 与在线运行逐字节一致，适合排查「同样的输入为什么输出变了」。

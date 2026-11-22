@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { parseLine, parseList, normalizeDomain } from './parser.js';
 import { subsumeByParent, mergeSources, findAllowShadowed, pruneBlockedAllows, isSelfOrSubdomain } from './merger.js';
 import { parseAllowlist, loadAllowlist } from './allowlist.js';
+import { parseDenylist, loadDenylist } from './denylist.js';
 import { beijingNow, renderRules, verifyRenderedRules } from './render.js';
 import { buildCandidates, looksLikeRuleList } from './network.js';
 import { evaluateSourceGate, forceFromEnv } from './gate.js';
@@ -38,18 +39,34 @@ test('$important 标记', () => {
 });
 
 test('DNS 层无意义的修饰符被剥掉、规则本体保留', () => {
-  // $third-party / $app= 只描述请求上下文（是否第三方、来自哪个 App），DNS 过滤无法区分，
+  // $third-party 只描述「这条请求是不是第三方」，DNS 过滤无法区分，
   // 剥掉修饰符后域名规则依然成立。以前这里整条丢弃，上游一旦混入 adblock 格式就会静默少一批。
   const a = parseLine('||example.com^$third-party');
   assert.equal(a.kind, 'block');
   assert.equal(a.domain, 'example.com');
-  assert.equal(parseLine('||example.com^$app=com.tencent.mm').kind, 'block');
   assert.equal(parseLine('||example.com^$~third-party').kind, 'block');
 
   // 与 $important 组合时，$important 不能被顺手丢掉
   const b = parseLine('||example.com^$important,third-party');
   assert.equal(b.kind, 'block');
   assert.equal(b.important, true);
+});
+
+test('$app= 是作用域修饰符，必须整条丢弃而不是剥成全网规则', () => {
+  // 回归用例：ADgk 第 7869 行 `||baidu.com^$app=com.tencent.qqlive` 原本只想在腾讯视频里
+  // 拦百度，被当成上下文修饰符剥掉之后变成 `||baidu.com^`，整个百度主域连同
+  // tieba.baidu.com 全部子域一起 NXDOMAIN —— 贴吧 App 首页热榜就是这么消失的。
+  const r = parseLine('||baidu.com^$app=com.tencent.qqlive');
+  assert.equal(r.kind, 'skip');
+  assert.equal(r.reason, 'app-scoped');
+
+  // 白名单侧的 $app= 同样不能放大：否则一条「只在某 App 内放行」会变成全网放行
+  const allow = parseLine('@@||c.data.mob.com^$app=com.sinovatech.unicom.ui');
+  assert.equal(allow.kind, 'skip');
+  assert.equal(allow.reason, 'app-scoped');
+
+  // 与其它修饰符混写时也要先判 $app=
+  assert.equal(parseLine('||example.com^$important,app=com.foo').kind, 'skip');
 });
 
 test('会改变拦截语义的修饰符仍然整条丢弃', () => {
@@ -928,6 +945,72 @@ test('裸二级域必须写明确认标记才算整域放行，否则只告警',
 
   // 三段式域名本来就不该告警，写不写标记都一样
   assert.deepEqual(parseAllowlist('a.example.com\n').warnings, []);
+});
+
+test('强制黑名单：上游缺失的域名被补进屏蔽区，且带 $important', () => {
+  // 京东联盟短链这类纯广告链路，5 个上游都不收；没有强制黑名单就只能干看着广告点得动
+  const result = mergeSources([mkSrc('s1', [{ kind: 'block', domain: 'ads.example.com' }])], {
+    forcedBlock: ['u.jd.com', 'union.click.jd.com'],
+  });
+
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.ok(out.includes('||u.jd.com^$important'));
+  assert.ok(out.includes('||union.click.jd.com^$important'));
+  assert.equal(result.stats.forcedBlock, 2);
+  assert.equal(result.stats.forcedBlockFromUpstream, 0);
+  assert.equal(result.stats.forcedBlockAdded, 2);
+  assert.deepEqual(verifyRenderedRules(out, result.raw).bad, []);
+});
+
+test('强制黑名单不会被宽父域规则静默吞掉（本次踩过的坑）', () => {
+  // 模拟上游混进 ||jd.com^ 的情况：u.jd.com 本来会被父子域收敛吃掉，
+  // 强制黑名单必须把它以 $important 重新钉回来，否则广告链路又敞开了。
+  const result = mergeSources(
+    [
+      mkSrc('s1', [
+        { kind: 'block', domain: 'jd.com' },
+        { kind: 'block', domain: 'u.jd.com' },
+      ]),
+    ],
+    { forcedBlock: ['u.jd.com'] }
+  );
+
+  assert.equal(result.stats.subsumeRemoved, 1, '普通子域规则仍会被父域收敛吃掉');
+  const out = renderRules(result, { updatedAt: beijingNow(), homepage: 'h' });
+  assert.ok(out.includes('||u.jd.com^$important'), '强制黑名单必须活下来');
+  assert.equal(result.stats.forcedBlockFromUpstream, 1);
+  assert.equal(result.stats.forcedBlockAdded, 0);
+});
+
+test('强制黑名单优先于强制白名单，同域不会两边都写', () => {
+  // 真正的冲突由 index.js 在合并前直接中止；merger 这一层保证绝不会出现「既放行又拦截」
+  const result = mergeSources([mkSrc('s1', [{ kind: 'block', domain: 'u.jd.com' }])], {
+    forcedAllow: ['u.jd.com'],
+    forcedBlock: ['u.jd.com'],
+  });
+
+  assert.equal(result.stats.forcedBlock, 0, '与白名单冲突的条目被剔除，交给上层报错');
+  assert.deepEqual(result.allow.map((a) => a.domain), ['u.jd.com']);
+});
+
+test('denylist.txt 解析：与 allowlist 共用同一套校验，措辞改成「拦截」', () => {
+  const { entries, errors, warnings } = parseDenylist('jd.com\n');
+  assert.deepEqual(errors, []);
+  assert.match(warnings[0], /整域拦截/);
+  assert.equal(entries[0].domain, 'jd.com');
+
+  assert.deepEqual(parseDenylist('jd.com  # 整域拦截\n').warnings, []);
+  assert.deepEqual(parseDenylist('u.jd.com\n').warnings, []);
+});
+
+test('仓库自带 denylist.txt 能通过校验', () => {
+  const { entries, errors, warnings } = loadDenylist(new URL('../denylist.txt', import.meta.url));
+  assert.deepEqual(errors, []);
+  assert.deepEqual(warnings, []);
+  assert.ok(entries.length >= 3, '京东广告链路至少要有联盟短链/点击/CPS 三条');
+  for (const e of entries) {
+    assert.equal(normalizeDomain(e.domain), e.domain);
+  }
 });
 
 test('仓库自带 allowlist.txt 能通过校验，且每条都是合法域名', () => {

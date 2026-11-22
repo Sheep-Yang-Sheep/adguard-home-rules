@@ -1,16 +1,16 @@
 {
-  "updatedAtBeijing": "2026-11-22 13:29",
-  "runAtBeijing": "2026-11-22 13:29",
-  "updatedAtUtc": "2026-11-22T05:29:21.268Z",
-  "runAtUtc": "2026-11-22T05:29:45.740Z",
+  "updatedAtBeijing": "2026-11-22 13:35",
+  "runAtBeijing": "2026-11-22 13:35",
+  "updatedAtUtc": "2026-11-22T05:35:33.929Z",
+  "runAtUtc": "2026-11-22T05:35:33.929Z",
   "upstreams": 5,
-  "before": 559724,
-  "after": 294039,
-  "subsumeRemoved": 6072,
-  "rawCovered": 68,
-  "block": 293314,
+  "before": 570388,
+  "after": 295560,
+  "subsumeRemoved": 6731,
+  "rawCovered": 69,
+  "block": 294818,
   "allow": 261,
-  "raw": 464,
+  "raw": 481,
   "allowDropped": 146,
   "allowDroppedByReason": {
     "same-domain": 46,
@@ -30,7 +30,7 @@
   "importantOverAllow": 0,
   "deadRules": 0,
   "badfilterKept": 0,
-  "sharedSuffixKept": 4,
+  "sharedSuffixKept": 5,
   "skippedTotal": 6039,
   "skipped": {
     "comment": 71,
@@ -52,6 +52,6 @@
     "217heidai": 257492,
     "antiad": 96597,
     "adgk": 3208,
-    "adguard-dns": 201861
+    "adguard-dns": 212525
   }
 }

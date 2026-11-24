@@ -41,16 +41,16 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-24 19:06` 周二
-- **上次自动任务运行时间（北京时间）**：`2026-11-24 22:45`
+- **本合集更新时间（北京时间）**：`2026-11-25 05:22` 周三
+- **上次自动任务运行时间（北京时间）**：`2026-11-25 05:22`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 571,539 |
-| 去重后规则数 | 305,095 |
-| 被父域规则覆盖而移除的冗余规则 | 6,793 |
-| **合并后规则数** | **298,191** |
-| └ 屏蔽规则 | 297,450 |
+| 合并前规则数（各上游合计，含重复） | 571,752 |
+| 去重后规则数 | 305,230 |
+| 被父域规则覆盖而移除的冗余规则 | 6,794 |
+| **合并后规则数** | **298,325** |
+| └ 屏蔽规则 | 297,584 |
 | └ 白名单例外 `@@` | 260 |
 | └ 通配 / 特殊规则 | 481 |
 | 白名单因与黑名单冲突而失效（已剔除） | 140 |
@@ -78,7 +78,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | # | 源 | 订阅地址 | 本次有效规则 |
 | --- | --- | --- | --- |
 | 1 | ADgk 手机去广告规则 | https://cdn.jsdelivr.net/gh/banbendalao/ADgk@latest/ADgk.txt | 3,208 |
-| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 214,692 |
+| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 214,905 |
 | 3 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
 | 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 255,907 |
 | 5 | anti-AD | https://anti-ad.net/easylist.txt | 97,166 |

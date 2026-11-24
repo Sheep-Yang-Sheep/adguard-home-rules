@@ -41,21 +41,21 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-23 21:12` 周一
-- **上次自动任务运行时间（北京时间）**：`2026-11-23 21:12`
+- **本合集更新时间（北京时间）**：`2026-11-24 09:00` 周二
+- **上次自动任务运行时间（北京时间）**：`2026-11-24 09:00`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 563,069 |
-| 去重后规则数 | 296,843 |
-| 被父域规则覆盖而移除的冗余规则 | 6,575 |
-| **合并后规则数** | **290,151** |
-| └ 屏蔽规则 | 289,409 |
-| └ 白名单例外 `@@` | 261 |
+| 合并前规则数（各上游合计，含重复） | 566,249 |
+| 去重后规则数 | 299,960 |
+| 被父域规则覆盖而移除的冗余规则 | 6,748 |
+| **合并后规则数** | **293,101** |
+| └ 屏蔽规则 | 292,360 |
+| └ 白名单例外 `@@` | 260 |
 | └ 通配 / 特殊规则 | 481 |
-| 白名单因与黑名单冲突而失效（已剔除） | 146 |
-| └ 同域既屏蔽又放行 | 46 |
-| └ 白名单位于被屏蔽父域之下 | 94 |
+| 白名单因与黑名单冲突而失效（已剔除） | 140 |
+| └ 同域既屏蔽又放行 | 43 |
+| └ 白名单位于被屏蔽父域之下 | 91 |
 | └ 白名单解开了黑名单里的子域 | 6 |
 | 因剔除白名单而恢复生效的屏蔽规则 | 13 |
 | **强制白名单条目（`allowlist.txt`）** | **77** |
@@ -64,7 +64,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | └ 其中上游缺失、由人工补进屏蔽区 | 3 |
 | └ 上游 App 作用域规则（`$app=`，DNS 层无法表达，已丢弃） | 18 |
 | **实际不生效的屏蔽规则合计** | **0** |
-| 解析阶段丢弃的行（DNS 层无效） | 6,039 |
+| 解析阶段丢弃的行（DNS 层无效） | 6,036 |
 
 > 「本合集更新时间」只在规则内容真的发生变化时才刷新，「上次任务运行时间」由定时任务刷新，可据此判断自动任务是否正常。
 > 若「上次任务运行时间」超过 **12 小时**没动，说明自动任务真的停摆了，请到 Actions 页面查看失败原因。
@@ -78,9 +78,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | # | 源 | 订阅地址 | 本次有效规则 |
 | --- | --- | --- | --- |
 | 1 | ADgk 手机去广告规则 | https://cdn.jsdelivr.net/gh/banbendalao/ADgk@latest/ADgk.txt | 3,208 |
-| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 211,143 |
+| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 214,514 |
 | 3 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 250,986 |
+| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 250,795 |
 | 5 | anti-AD | https://anti-ad.net/easylist.txt | 97,166 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
@@ -135,7 +135,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 - 拼多多商品图、高德定位、百度实时路况等**功能直接失效**
 - 微信支付 / 云闪付 / 手机银行**付款卡在「处理中」或提示系统繁忙**（收银台与风控网关被当成广告域拦掉）
 
-上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 146 条），所以修不回来。
+上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 140 条），所以修不回来。
 
 ### 5.1 它是什么
 

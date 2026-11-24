@@ -1,20 +1,20 @@
 {
-  "updatedAtBeijing": "2026-11-23 21:12",
-  "runAtBeijing": "2026-11-23 21:12",
-  "updatedAtUtc": "2026-11-23T13:12:22.699Z",
-  "runAtUtc": "2026-11-23T13:12:22.699Z",
+  "updatedAtBeijing": "2026-11-24 09:00",
+  "runAtBeijing": "2026-11-24 09:00",
+  "updatedAtUtc": "2026-11-24T01:00:20.376Z",
+  "runAtUtc": "2026-11-24T01:00:20.376Z",
   "upstreams": 5,
-  "before": 563069,
-  "after": 290151,
-  "subsumeRemoved": 6506,
+  "before": 566249,
+  "after": 293101,
+  "subsumeRemoved": 6679,
   "rawCovered": 69,
-  "block": 289409,
-  "allow": 261,
+  "block": 292360,
+  "allow": 260,
   "raw": 481,
-  "allowDropped": 146,
+  "allowDropped": 140,
   "allowDroppedByReason": {
-    "same-domain": 46,
-    "under-block": 94,
+    "same-domain": 43,
+    "under-block": 91,
     "shadows-block": 6
   },
   "shadowRestored": 13,
@@ -31,7 +31,7 @@
   "deadRules": 0,
   "badfilterKept": 0,
   "sharedSuffixKept": 5,
-  "skippedTotal": 6039,
+  "skippedTotal": 6036,
   "skipped": {
     "comment": 71,
     "regex": 415,
@@ -41,7 +41,7 @@
     "unsupported-modifier": 108,
     "no-anchor": 100,
     "regex-modifier": 3,
-    "invalid-domain": 95,
+    "invalid-domain": 92,
     "app-scoped": 18,
     "regex-allow": 12,
     "url-anchor": 7
@@ -49,9 +49,9 @@
   "failedSources": [],
   "sources": {
     "qy": 566,
-    "217heidai": 250986,
+    "217heidai": 250795,
     "antiad": 97166,
     "adgk": 3208,
-    "adguard-dns": 211143
+    "adguard-dns": 214514
   }
 }

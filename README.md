@@ -41,21 +41,21 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-27 21:43` 周五
-- **上次自动任务运行时间（北京时间）**：`2026-11-27 21:43`
+- **本合集更新时间（北京时间）**：`2026-11-28 07:33` 周六
+- **上次自动任务运行时间（北京时间）**：`2026-11-28 07:33`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 570,492 |
-| 去重后规则数 | 302,802 |
-| 被父域规则覆盖而移除的冗余规则 | 6,762 |
-| **合并后规则数** | **295,924** |
-| └ 屏蔽规则 | 295,182 |
-| └ 白名单例外 `@@` | 260 |
+| 合并前规则数（各上游合计，含重复） | 571,818 |
+| 去重后规则数 | 303,111 |
+| 被父域规则覆盖而移除的冗余规则 | 6,788 |
+| **合并后规则数** | **296,206** |
+| └ 屏蔽规则 | 295,466 |
+| └ 白名单例外 `@@` | 258 |
 | └ 通配 / 特殊规则 | 482 |
-| 白名单因与黑名单冲突而失效（已剔除） | 145 |
+| 白名单因与黑名单冲突而失效（已剔除） | 146 |
 | └ 同域既屏蔽又放行 | 46 |
-| └ 白名单位于被屏蔽父域之下 | 93 |
+| └ 白名单位于被屏蔽父域之下 | 94 |
 | └ 白名单解开了黑名单里的子域 | 6 |
 | 因剔除白名单而恢复生效的屏蔽规则 | 13 |
 | **强制白名单条目（`allowlist.txt`）** | **77** |
@@ -78,9 +78,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | # | 源 | 订阅地址 | 本次有效规则 |
 | --- | --- | --- | --- |
 | 1 | ADgk 手机去广告规则 | https://cdn.jsdelivr.net/gh/banbendalao/ADgk@latest/ADgk.txt | 3,208 |
-| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 216,043 |
+| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 216,302 |
 | 3 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 254,217 |
+| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 255,284 |
 | 5 | anti-AD | https://anti-ad.net/easylist.txt | 96,458 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
@@ -135,7 +135,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 - 拼多多商品图、高德定位、百度实时路况等**功能直接失效**
 - 微信支付 / 云闪付 / 手机银行**付款卡在「处理中」或提示系统繁忙**（收银台与风控网关被当成广告域拦掉）
 
-上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 145 条），所以修不回来。
+上游自带的 `@@` 例外本来是用来修这类误杀的，但本项目「黑名单优先」会把它整条剔除（本次合并共剔除 146 条），所以修不回来。
 
 ### 5.1 它是什么
 

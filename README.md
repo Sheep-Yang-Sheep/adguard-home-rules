@@ -41,17 +41,17 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 
 ## 二、当前状态
 
-- **本合集更新时间（北京时间）**：`2026-11-28 15:34` 周六
-- **上次自动任务运行时间（北京时间）**：`2026-11-28 15:34`
+- **本合集更新时间（北京时间）**：`2026-11-29 00:47` 周日
+- **上次自动任务运行时间（北京时间）**：`2026-11-29 00:47`
 
 | 指标 | 数值 |
 | --- | --- |
-| 合并前规则数（各上游合计，含重复） | 572,408 |
-| 去重后规则数 | 303,538 |
-| 被父域规则覆盖而移除的冗余规则 | 6,770 |
-| **合并后规则数** | **296,651** |
-| └ 屏蔽规则 | 295,908 |
-| └ 白名单例外 `@@` | 258 |
+| 合并前规则数（各上游合计，含重复） | 571,975 |
+| 去重后规则数 | 302,078 |
+| 被父域规则覆盖而移除的冗余规则 | 6,527 |
+| **合并后规则数** | **295,434** |
+| └ 屏蔽规则 | 294,689 |
+| └ 白名单例外 `@@` | 260 |
 | └ 通配 / 特殊规则 | 485 |
 | 白名单因与黑名单冲突而失效（已剔除） | 146 |
 | └ 同域既屏蔽又放行 | 46 |
@@ -64,7 +64,7 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | └ 其中上游缺失、由人工补进屏蔽区 | 3 |
 | └ 上游 App 作用域规则（`$app=`，DNS 层无法表达，已丢弃） | 18 |
 | **实际不生效的屏蔽规则合计** | **0** |
-| 解析阶段丢弃的行（DNS 层无效） | 6,036 |
+| 解析阶段丢弃的行（DNS 层无效） | 6,037 |
 
 > 「本合集更新时间」只在规则内容真的发生变化时才刷新，「上次任务运行时间」由定时任务刷新，可据此判断自动任务是否正常。
 > 若「上次任务运行时间」超过 **12 小时**没动，说明自动任务真的停摆了，请到 Actions 页面查看失败原因。
@@ -78,9 +78,9 @@ https://ghfast.top/https://raw.githubusercontent.com/Sheep-Yang-Sheep/adguard-ho
 | # | 源 | 订阅地址 | 本次有效规则 |
 | --- | --- | --- | --- |
 | 1 | ADgk 手机去广告规则 | https://cdn.jsdelivr.net/gh/banbendalao/ADgk@latest/ADgk.txt | 3,208 |
-| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 216,447 |
+| 2 | AdGuard HostlistsRegistry filter_29 | https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt | 216,671 |
 | 3 | QY Ads Rule | https://raw.githubusercontent.com/rssvcn/qy-Ads-Rule/main/black.txt | 566 |
-| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 255,729 |
+| 4 | 217heidai 广告过滤合并规则 | https://github.com/217heidai/adblockfilters/releases/download/rule/adblockdns.txt | 255,072 |
 | 5 | anti-AD | https://anti-ad.net/easylist.txt | 96,458 |
 
 各源版权归原作者所有，请遵守各自的使用条款。
